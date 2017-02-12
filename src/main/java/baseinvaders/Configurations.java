@@ -8,8 +8,9 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -61,9 +62,13 @@ public class Configurations {
 
     private static final List<Image> shipImages = new ArrayList<>();
 
+    private static InputStream getResource(String name) {
+        return Configurations.class.getClassLoader().getResourceAsStream(name);
+    }
+
     private static void init() {
         try {
-            BufferedImage spaceships = ImageIO.read(new File("spaceships.png"));
+            BufferedImage spaceships = ImageIO.read(getResource("spaceships.png"));
             for (int i = 0; i < 20; i++) {
                 for (int j = 0; j < 3; j++) {
                     BufferedImage subimage = spaceships.getSubimage(48 * j, i * 24, 24, 24);
@@ -227,7 +232,7 @@ public class Configurations {
 
     public static void readCongfigs(String file) throws IOException {
         init();
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(getResource(file)))) {
             String line;
             while ((line = br.readLine()) != null) {
                 StringTokenizer st = new StringTokenizer(line);
