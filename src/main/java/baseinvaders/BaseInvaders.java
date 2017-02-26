@@ -10,7 +10,6 @@ import Objects.BaseInvadersException;
 import Objects.GameMapImpl;
 import Server.BIUIServer;
 import Server.BaseInvadersServer;
-import Server.UIServer;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
@@ -55,10 +54,8 @@ public class BaseInvaders {
 
                 final GameMapImpl gameMap = new GameMapImpl();
                 final BaseInvadersServer server = new BaseInvadersServer(gameMap);
-                final UIServer uiserver = new UIServer(gameMap);
                 new Thread(gameMap, "Game Map").start();
                 new Thread(server, "Server").start();
-                new Thread(uiserver, "UIServer").start();
                 if (Configurations.getUseLocalUI()) {
                     final GameStatus status = new GameStatus(server);
                     try {

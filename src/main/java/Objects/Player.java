@@ -13,7 +13,7 @@ import java.io.Serializable;
  */
 public class Player extends GameObject implements Serializable {
 
-    private String name;
+    private final String name;
     private final int id;
     private static int nextId;
 

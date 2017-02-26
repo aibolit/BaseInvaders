@@ -21,7 +21,6 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
-import org.json.JSONObject;
 
 /**
  *
@@ -34,7 +33,6 @@ public class Configurations {
     private static int biUiPort = 14739;
     private static String host = "127.0.0.1";
     private static final Map<String, String> users = new ConcurrentHashMap<>();
-    private static final Map<String, String> uiUsers = new ConcurrentHashMap<>();
     private static long timeout = 20;
     private static long uiTimeout = 20;
     private static int maxConnectionsPerUser = 3;
@@ -112,22 +110,11 @@ public class Configurations {
         return users.keySet();
     }
 
-    public static Set<String> getUIUsers() {
-        return uiUsers.keySet();
-    }
-
     public static String getUserPassword(String user) {
         if (!users.containsKey(user)) {
             throw new IllegalArgumentException("No Such User");
         }
         return users.get(user);
-    }
-
-    public static String getUIUserPassword(String user) {
-        if (!uiUsers.containsKey(user)) {
-            throw new IllegalArgumentException("No Such User");
-        }
-        return uiUsers.get(user);
     }
 
     public static long getTimeout() {
@@ -257,11 +244,6 @@ public class Configurations {
                             users.put(st.nextToken(), st.nextToken());
                         }
                         break;
-                    case "uiusers":
-                        while (st.hasMoreTokens()) {
-                            uiUsers.put(st.nextToken(), st.nextToken());
-                        }
-                        break;
                     case "timeout":
                         timeout = Long.parseLong(st.nextToken());
                         break;
@@ -356,9 +338,9 @@ public class Configurations {
         StringBuilder out = new StringBuilder();
         out.append("port ").append(port).append("\nhost ").append(host).append("\n");
         out.append("users ");
-        for (Map.Entry<String, String> user : users.entrySet()) {
+        users.entrySet().forEach((user) -> {
             out.append(user.getKey()).append(" ").append(user.getValue());
-        }
+        });
         out.append("\n");
         out.append("timeout ").append(timeout).append("\n");
         out.append("ticks-remaining ").append(ticksRemaining).append("\n");
@@ -380,30 +362,6 @@ public class Configurations {
         out.append(" SCANRADIUS ").append(scanRadius);
         out.append(" SCANDELAY ").append(scanDelay);
         return out.toString();
-    }
-
-    public static JSONObject toJSONObject() {
-        JSONObject configState = new JSONObject();
-        configState.put("playerTimeout", timeout);
-        configState.put("UITimeout", uiTimeout);
-        configState.put("ticksRemaining", ticksRemaining);
-        configState.put("friction", friction);
-        configState.put("brakeFriction", brakeFriction);
-        configState.put("speed", speed);
-        configState.put("captureRadius", captureRadius);
-        configState.put("visionRadius", visionRadius);
-        configState.put("maxBombs", maxBombs);
-        configState.put("bombPlacementRadius", bombPlacementRadius);
-        configState.put("bombExplosionRadius", bombExplosionRadius);
-        configState.put("bombDelay", bombDelay);
-        configState.put("bombPower", bombPower);
-        configState.put("scanRadius", scanRadius);
-        configState.put("scanDelay", scanDelay);
-        configState.put("mineCount", mineCount);
-        configState.put("mapWidth", mapWidth);
-        configState.put("mapHeight", mapHeight);
-        configState.put("maxUsers", users.size());
-        return configState;
     }
 
     private Configurations() {

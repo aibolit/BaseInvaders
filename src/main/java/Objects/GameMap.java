@@ -6,10 +6,8 @@
 package Objects;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.json.JSONObject;
 
 /**
  *
@@ -17,15 +15,11 @@ import org.json.JSONObject;
  */
 public interface GameMap {
 
-    public JSONObject toJSONObject();
-
     public long getTicks();
 
     public Collection<Mine> getMines();
 
     public long getUserScore(String user);
-
-    public Map<String, List<String>> getUserUpdates();
 
     public Map<String, Set<Mine>> getUserMines();
 

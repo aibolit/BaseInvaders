@@ -40,12 +40,14 @@ public class BaseInvadersServer implements BIServer, Runnable {
 
     public BaseInvadersServer(GameMapImpl exchange) {
         this.gameMap = exchange;
-        for (String user : Configurations.getUsers()) {
-            userConnections.put(user, new ConcurrentHashMap<Integer, Socket>());
-            subscribedConnections.put(user, new ConcurrentHashMap<Integer, PrintWriter>());
-        }
+
+        Configurations.getUsers().stream().forEach(user -> {
+            userConnections.put(user, new ConcurrentHashMap<>());
+            subscribedConnections.put(user, new ConcurrentHashMap<>());
+        });
     }
 
+    @Override
     public GameMap getGameMap() {
         return gameMap;
     }
@@ -64,9 +66,6 @@ public class BaseInvadersServer implements BIServer, Runnable {
     }
 
     private void removeConnection(String user, int id) {
-        synchronized (subscribedConnections) {
-            subscribedConnections.get(user).remove(id);
-        }
         synchronized (userConnections) {
             try {
                 Socket socket = userConnections.get(user).get(id);
@@ -80,28 +79,7 @@ public class BaseInvadersServer implements BIServer, Runnable {
         }
     }
 
-    private void writeToSubscriptions(Map<String, List<String>> subData) {
-        synchronized (subscribedConnections) {
-            for (Map.Entry<String, List<String>> entry : subData.entrySet()) {
-                String subUser = entry.getKey();
-                List<String> subActions = entry.getValue();
-
-                for (Map.Entry<Integer, PrintWriter> subEntry : subscribedConnections.get(subUser).entrySet()) {
-                    Integer subKey = subEntry.getKey();
-                    PrintWriter subPout = subEntry.getValue();
-                    try {
-                        for (String subAction : subActions) {
-                            subPout.println(subAction);
-                        }
-                        subPout.flush();
-                    } catch (Exception ex) {
-                        removeConnection(subUser, subKey);
-                    }
-                }
-            }
-        }
-    }
-
+    @Override
     public boolean isRunning() {
         return isRunning;
     }
@@ -127,15 +105,7 @@ public class BaseInvadersServer implements BIServer, Runnable {
                                 gameMap.wait(1000);
                             }
                         } catch (InterruptedException ex) {
-                        } finally {
-                            synchronized (gameMap) {
-                                if (!gameMap.getUserUpdates().isEmpty()) {
-                                    writeToSubscriptions(gameMap.getUserUpdates());
-                                    gameMap.clearUserUpdates();
-                                }
-                            }
                         }
-
                     }
                 }
             }.start();

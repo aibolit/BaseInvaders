@@ -15,12 +15,12 @@ public abstract class GameObject implements Serializable {
 
     public GameObject(Point position) {
         this.position = new Point(position);
-        synchronized (sync) {
+        synchronized (SYNC) {
             id = nextId++;
         }
     }
 
-    private static final Object sync = new Object();
+    private static final Object SYNC = new Object();
     private static Long nextId = 0L;
     private final long id;
     private final Point position;

@@ -131,11 +131,11 @@ public class GameStatus extends javax.swing.JFrame {
         cg.transform(AffineTransform.getTranslateInstance(80, 50));
         cg.transform(AffineTransform.getScaleInstance(1.5, 1.5));
 
-        cg.setFont(new Font("Utsaah", Font.BOLD, 54));
+        cg.setFont(new Font("SansSerif", Font.BOLD, 44));
         cg.setColor(Color.DARK_GRAY);
-        cg.drawString("Bloomberg", 34, 48);
+        cg.drawString("Bloomberg", 18, 54);
         cg.setColor(Color.WHITE);
-        cg.drawString("Bloomberg", 30, 44);
+        cg.drawString("Bloomberg", 14, 50);
         cg.transform(AffineTransform.getTranslateInstance(0, 60));
 
         AffineTransform local = cg.getTransform();
@@ -248,10 +248,9 @@ public class GameStatus extends javax.swing.JFrame {
         cg.setColor(Color.GRAY);
         cg.setStroke(new BasicStroke(4));
         cg.drawRect(540, 20, 1040, 1040);
-        Graphics2D g2x = (Graphics2D) canvas.getGraphics();
 
-        g2x.drawImage(biImage, AffineTransform.getScaleInstance(1.0 * canvas.getWidth() / biImage.getWidth(), 1.0 * canvas.getHeight() / biImage.getHeight()), null);
-
+        canvas.setImage(biImage);
+        canvas.repaint();
     }
 
     /**
@@ -264,7 +263,7 @@ public class GameStatus extends javax.swing.JFrame {
     private void initComponents() {
 
         disclaimerLabel = new javax.swing.JLabel();
-        canvas = new javax.swing.JPanel();
+        canvas = new GUI.Canvas();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Base Invaders");
@@ -276,11 +275,11 @@ public class GameStatus extends javax.swing.JFrame {
         canvas.setLayout(canvasLayout);
         canvasLayout.setHorizontalGroup(
             canvasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
+            .addGap(0, 1360, Short.MAX_VALUE)
         );
         canvasLayout.setVerticalGroup(
             canvasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 774, Short.MAX_VALUE)
+            .addGap(0, 778, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -290,17 +289,19 @@ public class GameStatus extends javax.swing.JFrame {
             .addGroup(layout.createSequentialGroup()
                 .addGap(0, 1138, Short.MAX_VALUE)
                 .addComponent(disclaimerLabel))
-            .addComponent(canvas, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addComponent(canvas, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(canvas, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGap(0, 0, 0)
+                .addContainerGap(774, Short.MAX_VALUE)
                 .addComponent(disclaimerLabel))
+            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createSequentialGroup()
+                    .addComponent(canvas, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addContainerGap()))
         );
-
-        getAccessibleContext().setAccessibleName("Base Invaders");
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -343,7 +344,7 @@ public class GameStatus extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel canvas;
+    private GUI.Canvas canvas;
     private javax.swing.JLabel disclaimerLabel;
     // End of variables declaration//GEN-END:variables
     private static final Color AMBER = new Color(255, 126, 0);

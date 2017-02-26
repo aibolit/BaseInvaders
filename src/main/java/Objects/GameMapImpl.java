@@ -12,8 +12,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 /**
  *
@@ -30,19 +28,15 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     private final Map<String, Long> userScores = new ConcurrentHashMap<>();
     private final Set<Bomb> bombs = new CopyOnWriteArraySet<>();
     private final Map<String, Set<Bomb>> userBombs = new ConcurrentHashMap<>();
-    private final Map<String, Long> playerLastScan = new ConcurrentHashMap<>();
+    private final Map<String, Long> userLastScan = new ConcurrentHashMap<>();
     private long ticks = 0, downtimeTicks = 0;
 
     private volatile boolean isRunning = true;
 
-    public JSONObject toJSONObject() {
-        return null;
-    }
-
     public GameMapImpl() throws BaseInvadersException {
-        for (String player : Configurations.getUsers()) {
+        Configurations.getUsers().forEach((player) -> {
             players.put(player, new Player(player, new Point(Configurations.getMapWidth() / 2, Configurations.getMapHeight() / 2)));
-        }
+        });
         reset();
     }
 
@@ -56,41 +50,30 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         userScores.clear();
         userBombs.clear();
         bombs.clear();
-        for (String player : Configurations.getUsers()) {
+
+        Configurations.getUsers().stream().forEach(player -> {
             userScores.put(player, 0L);
             userBombs.put(player, new CopyOnWriteArraySet<>());
-        }
+        });
 
-        for (Player player : players.values()) {
+        players.values().stream().forEach(player -> {
             player.getPosition().setX(Configurations.getMapWidth() / 2).setY(Configurations.getMapHeight() / 2);
             player.getVelocity().setX(0).setY(0);
-        }
+        });
 
         userAcceleration.clear();
         userAngle.clear();
         userBrakes.clear();
-
+        userLastScan.clear();
     }
 
+    @Override
     public synchronized boolean isRunning() {
         return isRunning;
     }
 
     public synchronized void setRunning(boolean run) {
         this.isRunning = run;
-    }
-
-    private synchronized void addUserUpdates(Map<String, List<String>> localUserUpdates) {
-        for (Map.Entry<String, List<String>> entry : localUserUpdates.entrySet()) {
-            String user = entry.getKey();
-            List<String> updates = entry.getValue();
-            if (userUpdates.containsKey(user)) {
-                userUpdates.get(user).addAll(updates);
-            } else {
-                userUpdates.put(user, updates);
-            }
-        }
-        this.notifyAll();
     }
 
     private synchronized void nextRound() {
@@ -133,22 +116,6 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             }
         });
 
-        mloop:
-        for (Mine mine : mines) {
-            Player closest = null;
-            for (Player player : players.values()) {
-                if (mine.getPosition().distanceTo(player.getPosition()) < Configurations.getCaptureRadius()) {
-                    if (closest == null) {
-                        closest = player;
-                    } else {
-                        continue mloop;
-                    }
-                }
-            }
-            if (closest != null) {
-                mine.setOwner(closest);
-            }
-        }
         mines.stream().filter((mine) -> (mine.getOwner() != null)).forEach((mine) -> {
             userScores.put(mine.getOwner().getName(), 1 + userScores.get(mine.getOwner().getName()));
         });
@@ -186,10 +153,6 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
 
     public void clearUserUpdates() {
         userUpdates.clear();
-    }
-
-    public synchronized Map<String, List<String>> getUserUpdates() {
-        return Collections.unmodifiableMap(userUpdates);
     }
 
     public synchronized void setAcceleration(String user, double angle, double acceleration) throws BaseInvadersException {
@@ -281,10 +244,10 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         if (p.getX() < 0 || p.getX() > Configurations.getMapWidth() || p.getY() < 0 || p.getY() > Configurations.getMapHeight()) {
             throw new BaseInvadersException("Sight location out of range");
         }
-        if (playerLastScan.containsKey(user) && playerLastScan.get(user) + Configurations.getScanDelay() > ticks) {
+        if (userLastScan.containsKey(user) && userLastScan.get(user) + Configurations.getScanDelay() > ticks) {
             throw new BaseInvadersException("Scanning too soon");
         }
-        playerLastScan.put(user, ticks);
+        userLastScan.put(user, ticks);
     }
 
     @Override
@@ -359,11 +322,6 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         }
 
         @Override
-        public Map<String, List<String>> getUserUpdates() {
-            return Collections.unmodifiableMap(userUpdates);
-        }
-
-        @Override
         public Map<String, Set<Mine>> getUserMines() {
             Map<String, Set<Mine>> userMines = new HashMap<>();
             mines.stream().filter((mine) -> !(mine.getOwner() == null)).map((mine) -> {
@@ -414,67 +372,6 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         @Override
         public boolean isRunning() {
             return isRunning;
-        }
-
-        public JSONObject toJSONObject() {
-            JSONObject gameState = new JSONObject();
-            gameState.put("ticks", ticks);
-
-            JSONArray playersArray = new JSONArray();
-            for (Map.Entry<String, Player> e : players.entrySet()) {
-                JSONObject player = new JSONObject();
-                String user = e.getKey();
-                player.put("name", user.replaceAll("[^a-zA-Z0-9]", ""));
-                player.put("x", e.getValue().getPosition().getX());
-                player.put("y", e.getValue().getPosition().getY());
-                player.put("vx", e.getValue().getVelocity().getX());
-                player.put("vy", e.getValue().getVelocity().getY());
-                if (userAcceleration.containsKey(user)) {
-                    player.put("acceleration", userAcceleration.get(user));
-                }
-                if (userAngle.containsKey(user)) {
-                    player.put("angle", userAngle.get(user));
-                }
-                if (userBrakes.containsKey(user)) {
-                    player.put("brakes", userBrakes.get(user));
-                }
-                if (userScores.containsKey(user)) {
-                    player.put("score", userScores.get(user));
-                }
-                if (playerLastScan.containsKey(user)) {
-                    player.put("lastscan", playerLastScan.get(user));
-                }
-                playersArray.put(player);
-            }
-            gameState.put("players", playersArray);
-
-            JSONArray mineArray = new JSONArray();
-            for (Mine m : mines) {
-                JSONObject mine = new JSONObject();
-                if (m.getOwner() == null) {
-                    mine.put("owner", "none");
-                } else {
-                    mine.put("owner", m.getOwner().getName().replaceAll("[^a-zA-Z0-9]", ""));
-                }
-                mine.put("x", m.getPosition().getX());
-                mine.put("y", m.getPosition().getY());
-                mineArray.put(mine);
-            }
-            gameState.put("mines", mineArray);
-
-            JSONArray bombArray = new JSONArray();
-            for (Bomb b : bombs) {
-                JSONObject bomb = new JSONObject();
-                bomb.put("owner", b.getPlayer().getName().replaceAll("[^a-zA-Z0-9]", ""));
-                bomb.put("x", b.getPosition().getX());
-                bomb.put("y", b.getPosition().getY());
-                bomb.put("delay", b.getDelay());
-                bomb.put("fuse", (b.getDelay() - b.getLifetime()));
-                bombArray.put(bomb);
-            }
-            gameState.put("bombs", bombArray);
-
-            return gameState;
         }
 
     }
