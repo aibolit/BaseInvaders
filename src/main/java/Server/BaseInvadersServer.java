@@ -56,6 +56,12 @@ public class BaseInvadersServer implements BIServer, Runnable {
         synchronized (userConnections) {
             Map<Integer, Socket> conns = userConnections.get(user);
             for (int i = 0; i < Configurations.getMaxConnectionsPerUser(); i++) {
+                if (conns.containsKey(i)) {
+                    if (conns.get(i).isClosed() || !conns.get(i).isConnected()) {
+                        conns.remove(i);
+                    }
+                }
+
                 if (!conns.containsKey(i)) {
                     conns.put(i, socket);
                     return i;
