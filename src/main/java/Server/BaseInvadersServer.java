@@ -57,7 +57,7 @@ public class BaseInvadersServer implements BIServer, Runnable {
             Map<Integer, Socket> conns = userConnections.get(user);
             for (int i = 0; i < Configurations.getMaxConnectionsPerUser(); i++) {
                 if (conns.containsKey(i)) {
-                    if (conns.get(i).isClosed() || !conns.get(i).isConnected()) {
+                    if (conns.get(i) == null || conns.get(i).isClosed() || !conns.get(i).isConnected()) {
                         conns.remove(i);
                     }
                 }
@@ -78,6 +78,7 @@ public class BaseInvadersServer implements BIServer, Runnable {
                 if (socket != null && !socket.isClosed()) {
                     socket.close();
                 }
+                userConnections.get(user).remove(id);
             } catch (IOException ex) {
 
             }
