@@ -3,7 +3,6 @@ package Objects;
 import baseinvaders.Configurations;
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,7 +39,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         reset();
     }
 
-    private void reset() {
+    private synchronized void reset() {
         ticks = 0;
         mines.clear();
         for (int i = 0; i < Configurations.getMineCount(); i++) {
@@ -151,10 +150,6 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         data.get(user).add(update);
     }
 
-    public void clearUserUpdates() {
-        userUpdates.clear();
-    }
-
     public synchronized void setAcceleration(String user, double angle, double acceleration) throws BaseInvadersException {
         if (acceleration < 0 || acceleration > 1) {
             throw new BaseInvadersException("Acceleration must be between 0 and 1");
@@ -194,7 +189,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     }
 
     @Override
-    public long getTicks() {
+    public synchronized long getTicks() {
         return ticks;
     }
 
@@ -251,7 +246,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     }
 
     @Override
-    public String toString() {
+    public synchronized String toString() {
         return "GameMap{" + "players=" + players + ", userUpdates=" + userUpdates + ", userAcceleration=" + userAcceleration + ", userAngle=" + userAngle + ", userBrakes=" + userBrakes + ", mines=" + mines + ", userScores=" + userScores + ", isRunning=" + isRunning + '}';
     }
 

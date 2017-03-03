@@ -42,7 +42,6 @@ public class BIUIServer implements BIServer {
                 final Socket socket = new Socket(Configurations.getHost(), Configurations.getBiUiPort());
                 final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());) {
             while (true) {
-                System.out.println("hi");
                 isRunning = true;
                 synchronized (thisBI) {
                     gameMap = (GameMap) is.readObject();

@@ -16,10 +16,10 @@ import baseinvaders.Configurations;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +91,32 @@ public class BaseInvadersServer implements BIServer, Runnable {
         }
     }
 
+    private String getUIMessage() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(Configurations.getMapWidth()).append(" ").append(Configurations.getMapHeight());
+        long lastTick;
+        synchronized (gameMap) {
+            lastTick = gameMap.getTicks();
+            sb.append(" ").append(lastTick);
+            sb.append(" ").append(Configurations.getTicksRemaining());
+            sb.append(" ").append(Configurations.getTickDelay());
+            sb.append(" ").append(Configurations.getBombExplosionRadius());
+            sb.append(" ").append(gameMap.getPlayers().size());
+            gameMap.getPlayers().forEach(player -> {
+                sb.append(" ").append(player.getId()).append(" ").append(player.getName()).append(" ").append(gameMap.getUserScore(player.getName())).append(" ").append(player.getPosition().getX()).append(" ").append(player.getPosition().getY()).append(" ").append(player.getVelocity().getX()).append(" ").append(player.getVelocity().getY());
+            });
+            sb.append(" ").append(gameMap.getMines().size());
+            gameMap.getMines().forEach(mine -> {
+                sb.append(" ").append(mine.getOwner() == null ? "--" : mine.getOwner().getName()).append(" ").append(mine.getPosition().getX()).append(" ").append(mine.getPosition().getY());
+            });
+            sb.append(" ").append(gameMap.getBombs().size());
+            gameMap.getBombs().forEach(bomb -> {
+                sb.append(" ").append(bomb.getDelay()).append(" ").append(bomb.getLifetime()).append(" ").append(bomb.getPosition().getX()).append(" ").append(bomb.getPosition().getY());
+            });
+            return sb.toString();
+        }
+    }
+
     @Override
     public void run() {
         isRunning = true;
@@ -113,7 +139,7 @@ public class BaseInvadersServer implements BIServer, Runnable {
             new Thread() {
                 @Override
                 public void run() {
-                    try (ServerSocket serverSocket = new ServerSocket(Configurations.getBiUiPort());) {
+                    try (ServerSocket serverSocket = new ServerSocket(Configurations.getUiPort());) {
                         setName("BaseInvaders UI server");
 
                         while (!serverSocket.isClosed()) {
@@ -122,18 +148,37 @@ public class BaseInvadersServer implements BIServer, Runnable {
                             new Thread() {
                                 @Override
                                 public void run() {
-                                    try (ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream())) {
+                                    final List<Player> players = new ArrayList<>();
+                                    final List<Mine> mines = new ArrayList<>();
+                                    try (PrintWriter pw = new PrintWriter(socket.getOutputStream());
+                                            BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+                                        long lastTick;
+
+                                        String msg;
+                                        synchronized (gameMap) {
+                                            lastTick = gameMap.getTicks();
+                                            msg = getUIMessage();
+                                        }
+                                        pw.println(msg);
+                                        pw.flush();
                                         while (!socket.isClosed()) {
+                                            String line = br.readLine();
+                                            System.out.println(line);
+                                            if (Long.parseLong(line) != lastTick) {
+                                                socket.close();
+                                                break;
+                                            }
                                             try {
                                                 Thread.sleep(Configurations.getTickDelay() - ((System.currentTimeMillis() + Configurations.getTickDelay() * 3 / 5) % Configurations.getTickDelay()));
                                             } catch (InterruptedException ex) {
                                                 ex.printStackTrace();
                                             }
                                             synchronized (gameMap) {
-                                                System.out.println("Writing OBJ");
-                                                os.writeObject(gameMap.makeCopy());
-                                                os.flush();
+                                                lastTick = gameMap.getTicks();
+                                                msg = getUIMessage();
                                             }
+                                            pw.println(msg);
+                                            pw.flush();
                                         }
                                     } catch (IOException ex) {
                                         ex.printStackTrace();

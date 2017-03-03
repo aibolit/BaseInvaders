@@ -51,7 +51,6 @@ public class BaseInvaders {
                 status.run();
 
             } else {
-
                 final GameMapImpl gameMap = new GameMapImpl();
                 final BaseInvadersServer server = new BaseInvadersServer(gameMap);
                 new Thread(gameMap, "Game Map").start();

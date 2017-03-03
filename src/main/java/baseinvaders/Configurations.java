@@ -48,7 +48,7 @@ public class Configurations {
     private static int maxBombs = 1;
     private static double bombPlacementRadius = 50;
     private static double bombExplosionRadius = 15;
-    private static long bombDelay = 20;
+    private static long bombDelay = 100;
     private static long minBombDelay = 20, maxBombDelay = 200;
     private static double bombPower = 15;
     private static double scanRadius = 50;
@@ -210,7 +210,21 @@ public class Configurations {
     }
 
     public static String getConfigData() {
-        return mapWidth + " " + mapHeight + " " + mineCount + " " + captureRadius + " " + speed + " " + friction + " " + brakeFriction + " " + scanRadius + " " + scanDelay + " " + bombPlacementRadius + " " + bombExplosionRadius + " " + bombPower + " " + bombDelay;
+        return mapWidth + " "
+                + mapHeight + " "
+                + mineCount + " "
+                + captureRadius + " "
+                + speed + " "
+                + friction + " "
+                + brakeFriction + " "
+                + scanRadius + " "
+                + scanDelay + " "
+                + bombPlacementRadius + " "
+                + bombExplosionRadius + " "
+                + bombPower + " "
+                + bombDelay + " "
+                + minBombDelay + " "
+                + maxBombDelay;
     }
 
     public static boolean getUseLocalUI() {
@@ -295,6 +309,10 @@ public class Configurations {
                         break;
                     case "bomb-delay":
                         bombDelay = Long.parseLong(st.nextToken());
+                        if (st.hasMoreTokens()) {
+                            minBombDelay = Long.parseLong(st.nextToken());
+                            maxBombDelay = Long.parseLong(st.nextToken());
+                        }
                         break;
                     case "bomb-power":
                         bombPower = Double.parseDouble(st.nextToken());
