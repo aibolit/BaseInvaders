@@ -8,6 +8,7 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -64,7 +65,13 @@ public class Configurations {
         return Configurations.class.getClassLoader().getResourceAsStream(name);
     }
 
+    private static boolean inited = false;
+
     private static void init() {
+        if (inited) {
+            return;
+        }
+        inited = true;
         try {
             BufferedImage spaceships = ImageIO.read(getResource("spaceships.png"));
             for (int i = 0; i < 20; i++) {
@@ -231,9 +238,9 @@ public class Configurations {
         return useLocalUi;
     }
 
-    public static void readCongfigs(String file) throws IOException {
+    public static void readCongfigs(String file, boolean isFile) throws IOException {
         init();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(getResource(file)))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(isFile ? new FileInputStream(file) : getResource(file)))) {
             String line;
             while ((line = br.readLine()) != null) {
                 StringTokenizer st = new StringTokenizer(line);

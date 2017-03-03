@@ -25,7 +25,8 @@ public class BaseInvaders {
     public static void main(String[] args) {
         try {
             try {
-                Configurations.readCongfigs("settings.cfg");
+                Configurations.readCongfigs("settings.cfg", false);
+                Configurations.readCongfigs("settings.cfg", true);
             } catch (IOException ex) {
                 System.out.println("Warning: Could not read configuration file; reverting to defaults");
             }
