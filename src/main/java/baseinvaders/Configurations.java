@@ -39,23 +39,31 @@ public class Configurations {
     private static int maxConnectionsPerUser = 3;
     private static Long ticksRemaining = 48000L;
     private static Long downtimeTicks = 1200L;
+    private static boolean autoRestart = true;
     private static long tickDelay = 25;
 
     private static double friction = .99;
     private static double brakeFriction = .987;
     private static double speed = .1;
-    private static double captureRadius = 5;
-    private static double visionRadius = 150;
+    private static double captureRadius = 40;
+    private static double visionRadius = 500;
     private static int maxBombs = 1;
     private static double bombPlacementRadius = 50;
-    private static double bombExplosionRadius = 15;
-    private static long bombDelay = 100;
+    private static double bombExplosionRadius = 300;
+    private static long bombDelay = 20;
     private static long minBombDelay = 20, maxBombDelay = 200;
-    private static double bombPower = 15;
+    private static double bombPower = 20;
     private static double scanRadius = 50;
     private static long scanDelay = 200;
 
     private static int mineCount = 30;
+    private static double minMineSpeed = 1, maxMineSpeed = 5;
+    private static int wormHoleCount = 16;
+    private static double minWormHoleRadius = 250, maxWormHoleRadius = 500;
+    private static double wormHoleCenterRadius = 20;
+    private static double wormHoleGravity = 2;
+    private static int wallCount = 16;
+    private static int wallMinLength = 1850, wallMaxLength = 1850;
     private static int mapWidth = 10000, mapHeight = 10000;
     private static boolean useLocalUi = true;
 
@@ -168,6 +176,47 @@ public class Configurations {
         return mineCount;
     }
 
+    public static double getMinMineSpeed() {
+        return minMineSpeed;
+    }
+
+    public static double getMaxMineSpeed() {
+        return maxMineSpeed;
+    }
+
+    public static int getWormHoleCount() {
+        return wormHoleCount;
+    }
+
+    public static double getMinWormHoleRadius() {
+        return minWormHoleRadius;
+    }
+
+    public static double getMaxWormHoleRadius() {
+        return maxWormHoleRadius;
+    }
+
+    public static double getWormHoleCenterRadius() {
+        return wormHoleCenterRadius;
+    }
+
+    public static double getWormHoleGravity() {
+        return wormHoleGravity;
+    }
+
+    public static int getWallCount() {
+        return wallCount;
+    }
+
+    public static int getMinWallLength() {
+        return wallMinLength;
+    }
+
+    public static int getMaxWallLength() {
+        return wallMaxLength;
+    }
+
+
     public static double getVisionRadius() {
         return visionRadius;
     }
@@ -236,6 +285,10 @@ public class Configurations {
 
     public static boolean getUseLocalUI() {
         return useLocalUi;
+    }
+
+    public static boolean getAutoRestart() {
+        return autoRestart;
     }
 
     public static void readCongfigs(String file, boolean isFile) throws IOException {

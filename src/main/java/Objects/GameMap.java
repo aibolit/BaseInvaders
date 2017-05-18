@@ -19,6 +19,10 @@ public interface GameMap {
 
     public Collection<Mine> getMines();
 
+    public Collection<WormHole> getWormHoles();
+
+    public Collection<Wall> getWalls();
+
     public long getUserScore(String user);
 
     public Map<String, Set<Mine>> getUserMines();

@@ -13,25 +13,49 @@ import java.io.Serializable;
  */
 public class Mine extends GameObject implements Serializable {
 
-    public Mine(Point position) {
+    private static final long serialVersionUID = 1L;
+
+    private Player owner = null;
+    private long index = 0;
+    private Point velocity;
+
+    public Mine(Point position, Point velocity) {
         super(position);
+
+        this.velocity = velocity;
     }
 
     public Mine(Mine mine) {
-        this(new Point(mine.getPosition()));
+        this(new Point(mine.getPosition()), new Point(mine.velocity));
         if (mine.owner != null) {
             owner = new Player(mine.owner);
         }
+        if (mine.index != 0) {
+            index = mine.index;
+        }
+        else {
+            index = mine.getId();
+        }
     }
-
-    private Player owner = null;
 
     public Player getOwner() {
         return owner;
     }
 
+    public long getIndex() {
+        return index;
+    }
+
     public void setOwner(Player owner) {
         this.owner = owner;
+    }
+
+    public void setIndex(long index) {
+        this.index = index;
+    }
+
+    public Point getVelocity() {
+        return velocity;
     }
 
     @Override
