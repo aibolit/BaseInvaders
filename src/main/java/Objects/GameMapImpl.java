@@ -287,29 +287,18 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             }
         });
 
-        mloop:
-        for (Mine mine : mines) {
-            Player closest = null;
-            for (Player player : players.values()) {
-                if (mine.getPosition().distanceTo(player.getPosition()) < Configurations.getCaptureRadius()) {
-                    if (closest == null) {
-                        closest = player;
-                    } else {
-                        continue mloop;
-                    }
-                }
-            }
-            if (closest != null) {
-                mine.setOwner(closest);
-            }
-        }
         mines.stream().filter((mine) -> (mine.getOwner() != null)).forEach((mine) -> {
             Player player = mine.getOwner();
             String name = player.getName();
             userScores.put(name, 1 + userScores.get(name));
         });
+
         Set<Bomb> removeBombs = new CopyOnWriteArraySet<>();
         bombs.stream().parallel().forEach(bomb -> {
+            // If bomb is triggerable, trigger if any player is within range
+            if (bomb.isTriggerBomb() && players.values().stream().filter((player) -> (player.distanceTo(bomb) < Configurations.getBombTriggerRadius())).count() > 0) {
+                bomb.trigger();
+            }
             if (bomb.isExploded()) {
                 removeBombs.add(bomb);
                 players.values().stream().filter((player) -> (player.distanceTo(bomb) < Configurations.getBombExplosionRadius())).forEach((player) -> {
@@ -369,8 +358,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         if (userBombs.get(user).size() >= Configurations.getMaxBombs()) {
             throw new BaseInvadersException("Unable to place this many bombs at a time");
         }
-        if (delay > Configurations.getMaxBombDelay() || delay < Configurations.getMinBombDelay()) {
-            throw new BaseInvadersException("Bomb delay is out of allowable range");
+        if (delay == -1 && !Configurations.getTriggerBombsEnabled()) {
+           throw new BaseInvadersException("Trigger bombs are not enabled");
+        }
+        if (delay != -1 && (delay > Configurations.getMaxBombDelay() || delay < Configurations.getMinBombDelay())) {
+           throw new BaseInvadersException("Bomb delay is out of allowable range");
         }
 
         Bomb b = new Bomb(player, p, delay);

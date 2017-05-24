@@ -48,10 +48,12 @@ public class Configurations {
     private static double captureRadius = 40;
     private static double visionRadius = 500;
     private static int maxBombs = 1;
-    private static double bombPlacementRadius = 50;
+    private static double bombTriggerRadius = 50;
+    private static double bombPlacementRadius = 150;
     private static double bombExplosionRadius = 300;
     private static long bombDelay = 20;
     private static long minBombDelay = 20, maxBombDelay = 200;
+    private static boolean triggerBombsEnabled = true;
     private static double bombPower = 20;
     private static double scanRadius = 50;
     private static long scanDelay = 200;
@@ -237,8 +239,17 @@ public class Configurations {
         return maxBombDelay;
     }
 
+    public static boolean getTriggerBombsEnabled() {
+        return triggerBombsEnabled;
+    }
+
+
     public static double getBombPower() {
         return bombPower;
+    }
+
+    public static double getBombTriggerRadius() {
+        return bombTriggerRadius;
     }
 
     public static double getBombPlacementRadius() {
@@ -263,24 +274,6 @@ public class Configurations {
 
     public static long getTickDelay() {
         return tickDelay;
-    }
-
-    public static String getConfigData() {
-        return mapWidth + " "
-                + mapHeight + " "
-                + mineCount + " "
-                + captureRadius + " "
-                + speed + " "
-                + friction + " "
-                + brakeFriction + " "
-                + scanRadius + " "
-                + scanDelay + " "
-                + bombPlacementRadius + " "
-                + bombExplosionRadius + " "
-                + bombPower + " "
-                + bombDelay + " "
-                + minBombDelay + " "
-                + maxBombDelay;
     }
 
     public static boolean getUseLocalUI() {
@@ -433,6 +426,7 @@ public class Configurations {
         out.append(" VISIONRADIUS ").append(visionRadius);
         out.append(" FRICTION ").append(friction);
         out.append(" BRAKEFRICTION ").append(brakeFriction);
+        out.append(" BOMBTRIGGERRADIUS ").append(bombTriggerRadius);
         out.append(" BOMBPLACERADIUS ").append(bombPlacementRadius);
         out.append(" BOMBEFFECTRADIUS ").append(bombExplosionRadius);
         out.append(" BOMBDELAY ").append(bombDelay);

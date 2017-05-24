@@ -15,7 +15,7 @@ public class Bomb extends GameObject implements Serializable {
 
     private long lifetime = 0;
     private final Player player;
-    private final long delay;
+    private long delay;
 
     public Bomb(Player player, Point position, long delay) {
         super(position);
@@ -34,8 +34,18 @@ public class Bomb extends GameObject implements Serializable {
         return lifetime;
     }
 
+    public boolean isTriggerBomb() {
+        return delay == -1;
+    }
+
+    public void trigger() {
+        // Explode in 3 frames so the UI can display the explosion properly
+        lifetime = 0;
+        delay = 3;
+    }
+
     boolean isExploded() {
-        return lifetime >= delay;
+        return delay != -1 && lifetime >= delay;
     }
 
     public Player getPlayer() {
