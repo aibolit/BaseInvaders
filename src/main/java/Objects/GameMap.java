@@ -32,4 +32,6 @@ public interface GameMap {
     public Collection<Player> getPlayers();
 
     public boolean isRunning();
+
+    public Collection<WormHole> getWormHoles();
 }

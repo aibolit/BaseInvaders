@@ -16,6 +16,7 @@ public class Player extends GameObject implements Serializable {
     private final String name;
     private final int id;
     private static int nextId;
+    private boolean disabled = false;
 
     private Point velocity = new Point(0, 0);
 
@@ -46,5 +47,13 @@ public class Player extends GameObject implements Serializable {
 
     public int getPlayerId() {
         return id;
+    }
+
+    public boolean isDisabled() {
+        return disabled;
+    }
+
+    public void setDisabled(boolean disabled) {
+        this.disabled = disabled;
     }
 }

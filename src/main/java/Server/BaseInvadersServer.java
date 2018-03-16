@@ -12,6 +12,7 @@ import Objects.GameMapImpl;
 import Objects.Mine;
 import Objects.Player;
 import Objects.Point;
+import Objects.WormHole;
 import baseinvaders.Configurations;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -119,6 +120,10 @@ public class BaseInvadersServer implements BIServer, Runnable {
             sb.append(" ").append(gameMap.getBombs().size());
             gameMap.getBombs().forEach(bomb -> {
                 sb.append(" ").append(bomb.getDelay()).append(" ").append(bomb.getLifetime()).append(" ").append(bomb.getPosition().getX()).append(" ").append(bomb.getPosition().getY());
+            });
+            sb.append(" ").append(gameMap.getWormHoles().size());
+            gameMap.getWormHoles().forEach(wormHole->{
+                sb.append(" ").append(wormHole.getPosition().getX()).append(" ").append(wormHole.getPosition().getY()).append(" ").append(wormHole.getRadius());
             });
             return sb.toString();
         }
@@ -326,6 +331,13 @@ public class BaseInvadersServer implements BIServer, Runnable {
                 bombs.stream().forEach((bomb) -> {
                     sb.append(bomb.getPosition().getX()).append(" ").append(bomb.getPosition().getY()).append(" ").append(bomb.getLifetime()).append(" ");
                 });
+                sb.append("WORMHOLES");
+                List<WormHole> wormHoles = new LinkedList<>();
+                gameMap.getWormHoles().stream().filter(wormHole -> p.distanceTo(wormHole) - wormHole.getRadius() < Configurations.getVisionRadius()).forEach(wormHole-> wormHoles.add(wormHole));
+                sb.append(wormHoles.size()).append(" ");
+                wormHoles.forEach(wormHole-> {
+                    sb.append(wormHole.getPosition().getX()).append(" ").append(wormHole.getPosition().getY()).append(" ").append(wormHole.getRadius()).append(" ").append(wormHole.getDestination().getX()).append(" ").append(wormHole.getDestination().getY()).append(" ");
+                });
                 out = sb.toString();
             }
             break;
@@ -370,6 +382,13 @@ public class BaseInvadersServer implements BIServer, Runnable {
                 sb.append(bombs.size()).append(" ");
                 bombs.stream().forEach((bomb) -> {
                     sb.append(bomb.getPosition().getX()).append(" ").append(bomb.getPosition().getY()).append(" ").append(bomb.getLifetime()).append(" ");
+                });
+                sb.append("WORMHOLES");
+                List<WormHole> wormHoles = new LinkedList<>();
+                gameMap.getWormHoles().stream().filter(wormHole -> wormHole.distanceTo(p) - wormHole.getRadius() < Configurations.getVisionRadius()).forEach(wormHole-> wormHoles.add(wormHole));
+                sb.append(wormHoles.size()).append(" ");
+                wormHoles.forEach(wormHole-> {
+                    sb.append(wormHole.getPosition().getX()).append(" ").append(wormHole.getPosition().getY()).append(" ").append(wormHole.getRadius()).append(" ").append(wormHole.getDestination().getX()).append(" ").append(wormHole.getDestination().getY()).append(" ");
                 });
                 out = sb.toString();
             }

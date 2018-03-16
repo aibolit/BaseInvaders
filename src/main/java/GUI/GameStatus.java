@@ -194,9 +194,25 @@ public class GameStatus extends javax.swing.JFrame {
 
         cg.setTransform(root);
         cg.translate(560, 40);
-        double mapScale = 1000.0;
+        double mapScale = 1000;
+
         if (baseInvadersServer.getGameMap().isRunning()) {
+            
             cg.scale(mapScale / Configurations.getMapWidth(), mapScale / Configurations.getMapHeight());
+
+            cg.setColor(new Color(100, 0, 100, 200));
+            //cg.setColor(Color.CYAN);
+            baseInvadersServer.getGameMap().getWormHoles().forEach((wormHole) -> {
+                AffineTransform tloc = cg.getTransform();
+
+                cg.translate(wormHole.getPosition().getX(), wormHole.getPosition().getY());
+                //cg.scale(Configurations.getMapWidth() / mapScale, Configurations.getMapHeight() / mapScale);
+                cg.fillOval((int) (-wormHole.getRadius()), (int) (-wormHole.getRadius()), (int) wormHole.getRadius() * 2, (int) wormHole.getRadius() * 2);
+                //cg.fillOval(-100, -100, 200, 200);
+
+                cg.setTransform(tloc);
+            });
+
             baseInvadersServer.getGameMap().getPlayers().stream().forEach((player) -> {
                 AffineTransform tloc = cg.getTransform();
                 cg.translate(player.getPosition().getX(), player.getPosition().getY());

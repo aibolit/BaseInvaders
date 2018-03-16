@@ -55,6 +55,10 @@ public class Configurations {
     private static double scanRadius = 125;
     private static long scanDelay = 100;
 
+    private static double minWormHoleRadius = 150, maxWormHoleRadius = 500;
+    private static double wormHoleCenterRadius = 10;
+    private static double wormHoleGravity = 2;
+    private static int wormHoleCount = 6;
     private static int mineCount = 30;
     private static int mapWidth = 10000, mapHeight = 10000;
     private static boolean useLocalUi = true;
@@ -111,6 +115,26 @@ public class Configurations {
 
     public static int getBiUiPort() {
         return biUiPort;
+    }
+
+    public static double getMinWormHoleRadius() {
+        return minWormHoleRadius;
+    }
+
+    public static double getMaxWormHoleRadius() {
+        return maxWormHoleRadius;
+    }
+
+    public static double getWormHoleCenterRadius() {
+        return wormHoleCenterRadius;
+    }
+
+    public static double getWormHoleGravity() {
+        return wormHoleGravity;
+    }
+
+    public static int getWormHoleCount() {
+        return wormHoleCount;
     }
 
     public static Set<String> getUsers() {
@@ -217,21 +241,9 @@ public class Configurations {
     }
 
     public static String getConfigData() {
-        return mapWidth + " "
-                + mapHeight + " "
-                + mineCount + " "
-                + captureRadius + " "
-                + speed + " "
-                + friction + " "
-                + brakeFriction + " "
-                + scanRadius + " "
-                + scanDelay + " "
-                + bombPlacementRadius + " "
-                + bombExplosionRadius + " "
-                + bombPower + " "
-                + bombDelay + " "
-                + minBombDelay + " "
-                + maxBombDelay;
+        return mapWidth + " " + mapHeight + " " + mineCount + " " + captureRadius + " " + speed + " " + friction + " "
+                + brakeFriction + " " + scanRadius + " " + scanDelay + " " + bombPlacementRadius + " "
+                + bombExplosionRadius + " " + bombPower + " " + bombDelay + " " + minBombDelay + " " + maxBombDelay;
     }
 
     public static boolean getUseLocalUI() {
@@ -240,7 +252,8 @@ public class Configurations {
 
     public static void readCongfigs(String file, boolean isFile) throws IOException {
         init();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(isFile ? new FileInputStream(file) : getResource(file)))) {
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(isFile ? new FileInputStream(file) : getResource(file)))) {
             String line;
             while ((line = br.readLine()) != null) {
                 StringTokenizer st = new StringTokenizer(line);
@@ -248,106 +261,106 @@ public class Configurations {
                     continue;
                 }
                 switch (st.nextToken()) {
-                    case "port":
-                        port = Integer.parseInt(st.nextToken());
+                case "port":
+                    port = Integer.parseInt(st.nextToken());
+                    break;
+                case "uiport":
+                    uiPort = Integer.parseInt(st.nextToken());
+                    break;
+                case "biuiport":
+                    biUiPort = Integer.parseInt(st.nextToken());
+                    break;
+                case "host":
+                    host = st.nextToken();
+                    break;
+                case "users":
+                    while (st.hasMoreTokens()) {
+                        users.put(st.nextToken(), st.nextToken());
+                    }
+                    break;
+                case "timeout":
+                    timeout = Long.parseLong(st.nextToken());
+                    break;
+                case "uitimeout":
+                    uiTimeout = Long.parseLong(st.nextToken());
+                    break;
+                case "ticks-remaining":
+                    ticksRemaining = Long.parseLong(st.nextToken());
+                    break;
+                case "downtime-ticks":
+                    downtimeTicks = Long.parseLong(st.nextToken());
+                    break;
+                case "tick-delay":
+                    tickDelay = Long.parseLong(st.nextToken());
+                    break;
+                case "max-connections":
+                    maxConnectionsPerUser = Integer.parseInt(st.nextToken());
+                    break;
+                case "map":
+                    mapWidth = Integer.parseInt(st.nextToken());
+                    mapHeight = Integer.parseInt(st.nextToken());
+                    break;
+                case "friction":
+                    friction = Double.parseDouble(st.nextToken());
+                    break;
+                case "brake":
+                    brakeFriction = Double.parseDouble(st.nextToken());
+                    break;
+                case "speed":
+                    speed = Double.parseDouble(st.nextToken());
+                    break;
+                case "capture-radius":
+                    captureRadius = Double.parseDouble(st.nextToken());
+                    break;
+                case "mines":
+                    mineCount = Integer.parseInt(st.nextToken());
+                    break;
+                case "vision-radius":
+                    visionRadius = Double.parseDouble(st.nextToken());
+                    break;
+                case "max-bombs":
+                    maxBombs = Integer.parseInt(st.nextToken());
+                    break;
+                case "bomb-palacement-radius":
+                    bombPlacementRadius = Double.parseDouble(st.nextToken());
+                    break;
+                case "bomb-explosion-radius":
+                    bombExplosionRadius = Double.parseDouble(st.nextToken());
+                    break;
+                case "bomb-delay":
+                    bombDelay = Long.parseLong(st.nextToken());
+                    if (st.hasMoreTokens()) {
+                        minBombDelay = Long.parseLong(st.nextToken());
+                        maxBombDelay = Long.parseLong(st.nextToken());
+                    }
+                    break;
+                case "bomb-power":
+                    bombPower = Double.parseDouble(st.nextToken());
+                    break;
+                case "scan-radius":
+                    scanRadius = Double.parseDouble(st.nextToken());
+                    break;
+                case "scan-delay":
+                    scanDelay = Long.parseLong(st.nextToken());
+                    break;
+                case "use-local-ui":
+                    switch (st.nextToken()) {
+                    case "true":
+                        useLocalUi = true;
                         break;
-                    case "uiport":
-                        uiPort = Integer.parseInt(st.nextToken());
-                        break;
-                    case "biuiport":
-                        biUiPort = Integer.parseInt(st.nextToken());
-                        break;
-                    case "host":
-                        host = st.nextToken();
-                        break;
-                    case "users":
-                        while (st.hasMoreTokens()) {
-                            users.put(st.nextToken(), st.nextToken());
-                        }
-                        break;
-                    case "timeout":
-                        timeout = Long.parseLong(st.nextToken());
-                        break;
-                    case "uitimeout":
-                        uiTimeout = Long.parseLong(st.nextToken());
-                        break;
-                    case "ticks-remaining":
-                        ticksRemaining = Long.parseLong(st.nextToken());
-                        break;
-                    case "downtime-ticks":
-                        downtimeTicks = Long.parseLong(st.nextToken());
-                        break;
-                    case "tick-delay":
-                        tickDelay = Long.parseLong(st.nextToken());
-                        break;
-                    case "max-connections":
-                        maxConnectionsPerUser = Integer.parseInt(st.nextToken());
-                        break;
-                    case "map":
-                        mapWidth = Integer.parseInt(st.nextToken());
-                        mapHeight = Integer.parseInt(st.nextToken());
-                        break;
-                    case "friction":
-                        friction = Double.parseDouble(st.nextToken());
-                        break;
-                    case "brake":
-                        brakeFriction = Double.parseDouble(st.nextToken());
-                        break;
-                    case "speed":
-                        speed = Double.parseDouble(st.nextToken());
-                        break;
-                    case "capture-radius":
-                        captureRadius = Double.parseDouble(st.nextToken());
-                        break;
-                    case "mines":
-                        mineCount = Integer.parseInt(st.nextToken());
-                        break;
-                    case "vision-radius":
-                        visionRadius = Double.parseDouble(st.nextToken());
-                        break;
-                    case "max-bombs":
-                        maxBombs = Integer.parseInt(st.nextToken());
-                        break;
-                    case "bomb-palacement-radius":
-                        bombPlacementRadius = Double.parseDouble(st.nextToken());
-                        break;
-                    case "bomb-explosion-radius":
-                        bombExplosionRadius = Double.parseDouble(st.nextToken());
-                        break;
-                    case "bomb-delay":
-                        bombDelay = Long.parseLong(st.nextToken());
-                        if (st.hasMoreTokens()) {
-                            minBombDelay = Long.parseLong(st.nextToken());
-                            maxBombDelay = Long.parseLong(st.nextToken());
-                        }
-                        break;
-                    case "bomb-power":
-                        bombPower = Double.parseDouble(st.nextToken());
-                        break;
-                    case "scan-radius":
-                        scanRadius = Double.parseDouble(st.nextToken());
-                        break;
-                    case "scan-delay":
-                        scanDelay = Long.parseLong(st.nextToken());
-                        break;
-                    case "use-local-ui":
-                        switch (st.nextToken()) {
-                            case "true":
-                                useLocalUi = true;
-                                break;
-                            case "false":
-                                useLocalUi = false;
-                                break;
-                            default:
-                                System.out.println("use-local-ui must be {true, false}, defaulting true");
-                                break;
-                        }
+                    case "false":
+                        useLocalUi = false;
                         break;
                     default:
-                        if (line.charAt(0) != '#') {
-                            System.out.println("Oops no such setting " + line);
-                        }
+                        System.out.println("use-local-ui must be {true, false}, defaulting true");
                         break;
+                    }
+                    break;
+                default:
+                    if (line.charAt(0) != '#') {
+                        System.out.println("Oops no such setting " + line);
+                    }
+                    break;
                 }
             }
         }

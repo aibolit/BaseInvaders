@@ -2,6 +2,7 @@ package Objects;
 
 import baseinvaders.Configurations;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.Collections;
 
 /**
  *
@@ -28,23 +30,75 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     private final Set<Bomb> bombs = new CopyOnWriteArraySet<>();
     private final Map<String, Set<Bomb>> userBombs = new ConcurrentHashMap<>();
     private final Map<String, Long> userLastScan = new ConcurrentHashMap<>();
+    private final Set<WormHole> wormHoles = new CopyOnWriteArraySet<>();
     private long ticks = 0, downtimeTicks = 0;
 
     private volatile boolean isRunning = true;
 
     public GameMapImpl() throws BaseInvadersException {
         Configurations.getUsers().forEach((player) -> {
-            players.put(player, new Player(player, new Point(Configurations.getMapWidth() / 2, Configurations.getMapHeight() / 2)));
+            players.put(player,
+                    new Player(player, new Point(Configurations.getMapWidth() / 2, Configurations.getMapHeight() / 2)));
         });
         reset();
+    }
+
+    public List<WormHole> getPossibleWormHoles() {
+        List<WormHole> wormHoles = new ArrayList<WormHole>();
+        int mapWidth = Configurations.getMapWidth();
+        int mapHeight = Configurations.getMapHeight();
+        double screenDivisions = 4;
+        double xDistance = mapWidth / screenDivisions;
+        double yDistance = mapHeight / screenDivisions;
+        for (double i = xDistance / 2; i < mapWidth; i += xDistance) {
+            for (double j = yDistance / 2; j < mapHeight; j += yDistance) {
+                double radius = Math.random()
+                        * (Configurations.getMaxWormHoleRadius() - Configurations.getMinWormHoleRadius())
+                        + Configurations.getMinWormHoleRadius();
+                Point destination;
+                while (true) {
+                    destination = new Point(Math.random() * Configurations.getMapWidth(),
+                            Math.random() * Configurations.getMapHeight());
+                    boolean valid = true;
+                    for (WormHole w : wormHoles) {
+                        if (w.getPosition().distanceTo(destination) < w.getRadius()) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if (valid) {
+                        break;
+                    }
+                }
+                double xOffset = xDistance / (Math.random() > .5 ? 4 : -4);
+                double yOffset = yDistance / (Math.random() > .5 ? 4 : -4);
+                Point center = new Point(i + xOffset, j + yOffset);
+                wormHoles.add(new WormHole(center, radius, destination));
+            }
+        }
+        return wormHoles;
     }
 
     private synchronized void reset() {
         ticks = 0;
         mines.clear();
         for (int i = 0; i < Configurations.getMineCount(); i++) {
-            mines.add(new Mine(new Point(Math.random() * Configurations.getMapWidth(), Math.random() * Configurations.getMapHeight())));
+            mines.add(new Mine(new Point(Math.random() * Configurations.getMapWidth(),
+                    Math.random() * Configurations.getMapHeight())));
         }
+
+        wormHoles.clear();
+        List<WormHole> availableWormHoles = getPossibleWormHoles();
+        Collections.shuffle(availableWormHoles);
+        for (int i = 0; i < Configurations.getWormHoleCount(); i++) {
+            if (i >= availableWormHoles.size()) {
+                break;
+            }
+            WormHole w = availableWormHoles.get(i);
+            wormHoles.add(w);
+        }
+        System.out.println(wormHoles);
+        System.out.println(players);
 
         userScores.clear();
         userBombs.clear();
@@ -91,10 +145,20 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             if (userBrakes.containsKey(user) && userBrakes.get(user)) {
                 player.getVelocity().multiply(Configurations.getBrakeFriction());
                 Point p = player.getPosition();
-                p.add(player.getVelocity()).setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
+                p.add(player.getVelocity())
+                        .setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth())
+                        .setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
 
             } else {
-                double acceleration = Configurations.getSpeed() * (userAngle.containsKey(user) && userAcceleration.containsKey(user) ? userAcceleration.get(user) : 0);
+                double acceleration = 0;
+
+                if (!player.isDisabled()) {
+                    acceleration = Configurations.getSpeed()
+                            * (userAngle.containsKey(user) && userAcceleration.containsKey(user)
+                            ? userAcceleration.get(user)
+                            : 0);
+
+                }
                 double angle = userAngle.containsKey(user) ? userAngle.get(user) : 0;
 
                 double x = acceleration * Math.cos(angle);
@@ -103,7 +167,9 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                 player.getVelocity().add(x * .5, y * .5);
 
                 Point p = player.getPosition();
-                p.add(player.getVelocity()).setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
+                p.add(player.getVelocity())
+                        .setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth())
+                        .setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
 
                 player.getVelocity().add(x * .5, y * .5);
 
@@ -114,9 +180,45 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
 
         mines.stream().parallel().forEach((Mine mine) -> {
 
-            Player[] ps = players.values().stream().filter(player -> player.distanceTo(mine) < Configurations.getCaptureRadius()).toArray(Player[]::new);
+            Player[] ps = players.values().stream().filter(
+                    player -> player.distanceTo(mine) < Configurations.getCaptureRadius() && !player.isDisabled())
+                    .toArray(Player[]::new);
             if (ps.length == 1) {
                 mine.setOwner(ps[0]);
+            }
+        });
+
+        players.entrySet().stream().parallel().forEach(playerEntry -> {
+            Player player = playerEntry.getValue();
+            WormHole currentWormHole = null;
+            for (WormHole wormHole : wormHoles) {
+                if (wormHole.getPosition().distanceTo(player.getPosition()) < wormHole.getRadius()) {
+                    currentWormHole = wormHole;
+                    break;
+                }
+            }
+
+            if (currentWormHole != null) {
+                player.setDisabled(true);
+
+                // Set velocity towards center of worm hole
+                if (player.getPosition().distanceTo(currentWormHole.getPosition()) > Configurations
+                        .getWormHoleCenterRadius()) {
+                    double direction = player.getPosition().directionTo(currentWormHole.getPosition());
+                    double gravity = Configurations.getWormHoleGravity();
+                    double x = gravity * Math.cos(direction);
+                    double y = gravity * Math.sin(direction);
+                    player.getVelocity().add(x, y);
+
+                    // Transport players in center of worm hole
+                } else {
+                    Point destination = currentWormHole.getDestination();
+                    player.getPosition().setX(destination.getX());
+                    player.getPosition().setY(destination.getY());
+                    player.getVelocity().setX(0).setY(0);
+                }
+            } else {
+                player.setDisabled(false);
             }
         });
 
@@ -127,15 +229,19 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         bombs.stream().parallel().forEach(bomb -> {
             if (bomb.isExploded()) {
                 removeBombs.add(bomb);
-                players.values().stream().filter((player) -> (player.distanceTo(bomb) < Configurations.getBombExplosionRadius())).forEach((player) -> {
-                    double angle = bomb.directionTo(player);
-                    double acceleration = Configurations.getBombPower() * Math.sqrt((Configurations.getBombExplosionRadius() - bomb.distanceTo(player)) / Configurations.getBombExplosionRadius());
+                players.values().stream()
+                        .filter((player) -> (player.distanceTo(bomb) < Configurations.getBombExplosionRadius()))
+                        .forEach((player) -> {
+                            double angle = bomb.directionTo(player);
+                            double acceleration = Configurations.getBombPower()
+                                    * Math.sqrt((Configurations.getBombExplosionRadius() - bomb.distanceTo(player))
+                                            / Configurations.getBombExplosionRadius());
 
-                    double x = acceleration * Math.cos(angle);
-                    double y = acceleration * Math.sin(angle);
+                            double x = acceleration * Math.cos(angle);
+                            double y = acceleration * Math.sin(angle);
 
-                    player.getVelocity().add(x, y);
-                });
+                            player.getVelocity().add(x, y);
+                        });
             }
 
             bomb.nextRound();
@@ -155,7 +261,8 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         data.get(user).add(update);
     }
 
-    public synchronized void setAcceleration(String user, double angle, double acceleration) throws BaseInvadersException {
+    public synchronized void setAcceleration(String user, double angle, double acceleration)
+            throws BaseInvadersException {
         if (acceleration < 0 || acceleration > 1) {
             throw new BaseInvadersException("Acceleration must be between 0 and 1");
         }
@@ -241,7 +348,8 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     }
 
     public synchronized void doScan(String user, Point p) throws BaseInvadersException {
-        if (p.getX() < 0 || p.getX() > Configurations.getMapWidth() || p.getY() < 0 || p.getY() > Configurations.getMapHeight()) {
+        if (p.getX() < 0 || p.getX() > Configurations.getMapWidth() || p.getY() < 0
+                || p.getY() > Configurations.getMapHeight()) {
             throw new BaseInvadersException("Sight location out of range");
         }
         if (userLastScan.containsKey(user) && userLastScan.get(user) + Configurations.getScanDelay() > ticks) {
@@ -252,21 +360,25 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
 
     @Override
     public synchronized String toString() {
-        return "GameMap{" + "players=" + players + ", userUpdates=" + userUpdates + ", userAcceleration=" + userAcceleration + ", userAngle=" + userAngle + ", userBrakes=" + userBrakes + ", mines=" + mines + ", userScores=" + userScores + ", isRunning=" + isRunning + '}';
+        return "GameMap{" + "players=" + players + ", userUpdates=" + userUpdates + ", userAcceleration="
+                + userAcceleration + ", userAngle=" + userAngle + ", userBrakes=" + userBrakes + ", mines=" + mines
+                + ", userScores=" + userScores + ", isRunning=" + isRunning + '}';
     }
 
     @Override
     public void run() {
         while (true) {
             try {
-                Thread.sleep(Configurations.getTickDelay() - (System.currentTimeMillis() % Configurations.getTickDelay()));
+                Thread.sleep(
+                        Configurations.getTickDelay() - (System.currentTimeMillis() % Configurations.getTickDelay()));
                 if (isRunning) {
                     if (Configurations.getTicksRemaining() != null && ticks < Configurations.getTicksRemaining()) {
                         ticks++;
                         try {
                             nextRound();
                         } catch (Exception ex) {
-                            System.err.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                            System.err.println(
+                                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                             ex.printStackTrace();
                         }
                     } else {
@@ -274,7 +386,8 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                         downtimeTicks = 0;
                     }
                 } else {
-                    if (Configurations.getDowntimeTicks() != null && downtimeTicks < Configurations.getDowntimeTicks()) {
+                    if (Configurations.getDowntimeTicks() != null
+                            && downtimeTicks < Configurations.getDowntimeTicks()) {
                         downtimeTicks++;
                     } else {
                         ticks = 0;
@@ -288,11 +401,17 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         }
     }
 
+    @Override
+    public synchronized Collection<WormHole> getWormHoles() {
+        return wormHoles;
+    }
+
     class GameMapMessage implements GameMap, Serializable {
 
         private final Map<String, Player> players;
         private final Map<String, List<String>> userUpdates;
         private final Set<Mine> mines;
+        private final Set<WormHole> wormHoles;
         private final Map<String, Long> userScores;
         private final Set<Bomb> bombs;
         private final long ticks, downtimeTicks;
@@ -350,7 +469,9 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             return bombs;
         }
 
-        public GameMapMessage(Map<String, Player> players, Map<String, List<String>> userUpdates, Set<Mine> mines, Map<String, Long> userScores, Set<Bomb> bombs, long ticks, long downtimeTicks, boolean isRunning) {
+        public GameMapMessage(Map<String, Player> players, Map<String, List<String>> userUpdates, Set<Mine> mines,
+                Map<String, Long> userScores, Set<Bomb> bombs, Set<WormHole> wormHoles, long ticks, long downtimeTicks,
+                boolean isRunning) {
             this.players = new HashMap<>();
             players.entrySet().stream().forEach((player) -> {
                 this.players.put(player.getKey(), new Player(player.getValue()));
@@ -361,7 +482,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                 this.mines.add(new Mine(mine));
             });
             this.bombs = new HashSet<>(bombs);
-
+            this.wormHoles = new HashSet<>(wormHoles);
             this.userScores = new HashMap<>(userScores);
             this.ticks = ticks;
             this.downtimeTicks = downtimeTicks;
@@ -374,6 +495,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             return isRunning;
         }
 
+        @Override
+        public Collection<WormHole> getWormHoles() {
+            return wormHoles;
+        }
+
     }
 
     private GameMap lastMap = null;
@@ -383,7 +509,8 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         if (lastMapTick == ticks && lastMap != null) {
             return lastMap;
         }
-        lastMap = new GameMapMessage(players, userUpdates, mines, userScores, bombs, ticks, downtimeTicks, isRunning);
+        lastMap = new GameMapMessage(players, userUpdates, mines, userScores, bombs, wormHoles, ticks, downtimeTicks,
+                isRunning);
         lastMapTick = ticks;
         return lastMap;
     }
