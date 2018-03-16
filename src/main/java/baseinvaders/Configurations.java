@@ -52,8 +52,8 @@ public class Configurations {
     private static long bombDelay = 100;
     private static long minBombDelay = 20, maxBombDelay = 200;
     private static double bombPower = 15;
-    private static double scanRadius = 50;
-    private static long scanDelay = 200;
+    private static double scanRadius = 125;
+    private static long scanDelay = 100;
 
     private static int mineCount = 30;
     private static int mapWidth = 10000, mapHeight = 10000;

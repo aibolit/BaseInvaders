@@ -64,6 +64,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         userAngle.clear();
         userBrakes.clear();
         userLastScan.clear();
+
+        players.values().stream().forEach(player -> {
+            userAcceleration.put(player.getName(), 1.0);
+            userAngle.put(player.getName(), Math.random() * Math.PI * 2);
+        });
     }
 
     @Override

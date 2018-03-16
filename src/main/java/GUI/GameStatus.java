@@ -161,9 +161,9 @@ public class GameStatus extends javax.swing.JFrame {
         cg.drawString(timeFormat.format((ticksRemaining / (1000 / Configurations.getTickDelay())) / 3600) + ":" + timeFormat.format(((ticksRemaining / (1000 / Configurations.getTickDelay())) / 60) % 60) + ":" + timeFormat.format((ticksRemaining / (1000 / Configurations.getTickDelay())) % 60), 180, 180);
 
         cg.setColor(VERY_DARK_GRAY);
-        for (int i = 0; i < 41; i++) {
+        for (int i = 0; i < 21; i++) {
             if (i % 2 == 0) {
-                cg.fillRect(20, 240 + i * 20, 500, 20);
+                cg.fillRect(20, 240 + i * 40, 500, 40);
             }
         }
 
@@ -182,14 +182,14 @@ public class GameStatus extends javax.swing.JFrame {
         DecimalFormat scoreFormat = new DecimalFormat("");
         scoreFormat.setMinimumIntegerDigits(12);
 
-        Font playerFont = new Font("Arial", Font.PLAIN, 18);
-        Font scoreFont = new Font("Monospaced", Font.PLAIN, 18);
-        for (int i = 0; i < 41 && i < scores.size(); i++) {
-            cg.drawImage(Configurations.getPlayerImage(baseInvadersServer.getGameMap().getPlayer(scores.get(i).getUser()).getPlayerId()), 24, 240 + 20 * i, null);
+        Font playerFont = new Font("Arial", Font.PLAIN, 36);
+        Font scoreFont = new Font("Monospaced", Font.PLAIN, 36);
+        for (int i = 0; i < 21 && i < scores.size(); i++) {
+            cg.drawImage(Configurations.getPlayerImage(baseInvadersServer.getGameMap().getPlayer(scores.get(i).getUser()).getPlayerId()), 24, 250 + 40 * i, null);
             cg.setFont(playerFont);
-            cg.drawString(scores.get(i).getUser(), 50, 260 + 20 * i);
+            cg.drawString(scores.get(i).getUser(), 50, 270 + 40 * i);
             cg.setFont(scoreFont);
-            cg.drawString(String.format("%19s", scores.get(i).getScore()), 300, 260 + 20 * i);
+            cg.drawString(String.format("%19s", scores.get(i).getScore()), 90, 270 + 40 * i);
         }
 
         cg.setTransform(root);
