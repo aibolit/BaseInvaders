@@ -12,6 +12,8 @@ import Objects.GameMapImpl;
 import Objects.Mine;
 import Objects.Player;
 import Objects.Point;
+import Objects.Wall;
+import Objects.WormHole;
 import baseinvaders.Configurations;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -108,9 +110,11 @@ public class BaseInvadersServer implements BIServer, Runnable {
             sb.append(" ").append(Configurations.getTicksRemaining());
             sb.append(" ").append(Configurations.getTickDelay());
             sb.append(" ").append(Configurations.getBombExplosionRadius());
+            sb.append(" ").append(Configurations.getVisionRadius());
             sb.append(" ").append(gameMap.getPlayers().size());
             gameMap.getPlayers().forEach(player -> {
-                sb.append(" ").append(player.getId()).append(" ").append(player.getName()).append(" ").append(gameMap.getUserScore(player.getName())).append(" ").append(player.getPosition().getX()).append(" ").append(player.getPosition().getY()).append(" ").append(player.getVelocity().getX()).append(" ").append(player.getVelocity().getY());
+                Map<String, Set<Mine>> userMines = gameMap.getUserMines();
+                sb.append(" ").append(player.getId()).append(" ").append(player.getName()).append(" ").append(gameMap.getUserScore(player.getName())).append(" ").append(userMines.containsKey(player.getName()) ? userMines.get(player.getName()).size() : 0).append(" ").append(player.getPosition().getX()).append(" ").append(player.getPosition().getY()).append(" ").append(player.getVelocity().getX()).append(" ").append(player.getVelocity().getY());
             });
             sb.append(" ").append(gameMap.getMines().size());
             gameMap.getMines().forEach(mine -> {
@@ -119,6 +123,14 @@ public class BaseInvadersServer implements BIServer, Runnable {
             sb.append(" ").append(gameMap.getBombs().size());
             gameMap.getBombs().forEach(bomb -> {
                 sb.append(" ").append(bomb.getDelay()).append(" ").append(bomb.getLifetime()).append(" ").append(bomb.getPosition().getX()).append(" ").append(bomb.getPosition().getY());
+            });
+            sb.append(" ").append(gameMap.getWormHoles().size());
+            gameMap.getWormHoles().forEach(wormHole -> {
+                sb.append(" ").append(wormHole.getPosition().getX()).append(" ").append(wormHole.getPosition().getY()).append(" ").append(wormHole.getRadius());
+            });
+            sb.append(" ").append(gameMap.getWalls().size());
+            gameMap.getWalls().forEach(wall -> {
+                sb.append(" ").append(wall.getLine().getX1()).append(" ").append(wall.getLine().getY1()).append(" ").append(wall.getLine().getX2()).append(" ").append(wall.getLine().getY2());
             });
             return sb.toString();
         }
@@ -170,7 +182,7 @@ public class BaseInvadersServer implements BIServer, Runnable {
                                         pw.flush();
                                         while (!socket.isClosed()) {
                                             String line = br.readLine();
-                                            System.out.println(line);
+                                            //System.out.println(line);
                                             if (Long.parseLong(line) != lastTick) {
                                                 socket.close();
                                                 break;
@@ -284,6 +296,11 @@ public class BaseInvadersServer implements BIServer, Runnable {
     }
 
     private String processCommand(String user, String line, int connectionId, PrintWriter pout) throws BaseInvadersException {
+        if (!gameMap.isRunning()) {
+            return "SERVER_NOT_ACTIVE";
+        } else if (gameMap.isUserDisabled(user)) {
+            return "USER_DISABLED";
+        }
         StringTokenizer st = new StringTokenizer(line.trim());
         if (!st.hasMoreTokens()) {
             return null;
@@ -304,13 +321,14 @@ public class BaseInvadersServer implements BIServer, Runnable {
             case "STATUS": {
                 final StringBuilder sb = new StringBuilder("STATUS_OUT ");
                 Player p = gameMap.getPlayer(user);
+                sb.append(System.currentTimeMillis()).append(" ");
                 sb.append(p.getPosition().getX()).append(" ").append(p.getPosition().getY()).append(" ").append(p.getVelocity().getX()).append(" ").append(p.getVelocity().getY()).append(" ");
                 sb.append(" MINES ");
                 List<Mine> mines = new LinkedList<>();
                 gameMap.getMines().stream().filter(mine -> mine.distanceTo(p) < Configurations.getVisionRadius()).forEach(mine -> mines.add(mine));
                 sb.append(mines.size()).append(" ");
                 mines.stream().forEach((mine) -> {
-                    sb.append(mine.getOwner() != null ? mine.getOwner().getName() : "--").append(" ").append(mine.getPosition().getX()).append(" ").append(mine.getPosition().getY()).append(" ");
+                    sb.append(mine.getOwner() != null ? mine.getOwner().getName() : "--").append(" ").append(mine.getPosition().getX()).append(" ").append(mine.getPosition().getY()).append(" ").append(mine.getVelocity().getX()).append(" ").append(mine.getVelocity().getY()).append(" ");
                 });
                 sb.append("PLAYERS ");
                 List<Player> players = new LinkedList<>();
@@ -325,6 +343,20 @@ public class BaseInvadersServer implements BIServer, Runnable {
                 sb.append(bombs.size()).append(" ");
                 bombs.stream().forEach((bomb) -> {
                     sb.append(bomb.getPosition().getX()).append(" ").append(bomb.getPosition().getY()).append(" ").append(bomb.getLifetime()).append(" ");
+                });
+                sb.append("WORMHOLES ");
+                List<WormHole> wormHoles = new LinkedList<>();
+                gameMap.getWormHoles().stream().filter(wormHole -> wormHole.distanceTo(p) < wormHole.getRadius() + Configurations.getVisionRadius()).forEach(wormHole -> wormHoles.add(wormHole));
+                sb.append(wormHoles.size()).append(" ");
+                wormHoles.stream().forEach((wormHole) -> {
+                    sb.append(wormHole.getPosition().getX()).append(" ").append(wormHole.getPosition().getY()).append(" ").append(wormHole.getRadius()).append(" ").append(wormHole.getDestination().getX()).append(" ").append(wormHole.getDestination().getY()).append(" ");
+                });
+                sb.append("WALLS ");
+                List<Wall> walls = new LinkedList<>();
+                gameMap.getWalls().stream().filter(wall -> wall.distanceTo(p) < wall.getLength() / 2).forEach(wall -> walls.add(wall));
+                sb.append(walls.size()).append(" ");
+                walls.stream().forEach((wall) -> {
+                    sb.append(wall.getLine().getX1()).append(" ").append(wall.getLine().getY1()).append(" ").append(wall.getLine().getX2()).append(" ").append(wall.getLine().getY2()).append(" ");
                 });
                 out = sb.toString();
             }
@@ -350,12 +382,13 @@ public class BaseInvadersServer implements BIServer, Runnable {
                 Point p = new Point(Double.parseDouble(st.nextToken()), Double.parseDouble(st.nextToken()));
                 gameMap.doScan(user, p);
                 final StringBuilder sb = new StringBuilder("SCAN_OUT ");
+                sb.append(System.currentTimeMillis()).append(" ");
                 sb.append(" MINES ");
                 List<Mine> mines = new LinkedList<>();
                 gameMap.getMines().stream().filter(mine -> mine.distanceTo(p) < Configurations.getScanRadius()).forEach(mine -> mines.add(mine));
                 sb.append(mines.size()).append(" ");
                 mines.stream().forEach((mine) -> {
-                    sb.append(mine.getOwner() != null ? mine.getOwner().getName() : "--").append(" ").append(mine.getPosition().getX()).append(" ").append(mine.getPosition().getY()).append(" ");
+                    sb.append(mine.getOwner() != null ? mine.getOwner().getName() : "--").append(" ").append(mine.getPosition().getX()).append(" ").append(mine.getPosition().getY()).append(" ").append(mine.getVelocity().getX()).append(" ").append(mine.getVelocity().getY()).append(" ");
                 });
                 sb.append("PLAYERS ");
                 List<Player> players = new LinkedList<>();
@@ -370,6 +403,20 @@ public class BaseInvadersServer implements BIServer, Runnable {
                 sb.append(bombs.size()).append(" ");
                 bombs.stream().forEach((bomb) -> {
                     sb.append(bomb.getPosition().getX()).append(" ").append(bomb.getPosition().getY()).append(" ").append(bomb.getLifetime()).append(" ");
+                });
+                sb.append("WORMHOLES ");
+                List<WormHole> wormHoles = new LinkedList<>();
+                gameMap.getWormHoles().stream().filter(wormHole -> wormHole.distanceTo(p) < wormHole.getRadius() + Configurations.getScanRadius()).forEach(wormHole -> wormHoles.add(wormHole));
+                sb.append(wormHoles.size()).append(" ");
+                wormHoles.stream().forEach((wormHole) -> {
+                    sb.append(wormHole.getPosition().getX()).append(" ").append(wormHole.getPosition().getY()).append(" ").append(wormHole.getRadius()).append(" ").append(wormHole.getDestination().getX()).append(" ").append(wormHole.getDestination().getY()).append(" ");
+                });
+                sb.append("WALLS ");
+                List<Wall> walls = new LinkedList<>();
+                gameMap.getWalls().stream().filter(wall -> wall.distanceTo(p) < wall.getLength() / 2).forEach(wall -> walls.add(wall));
+                sb.append(walls.size()).append(" ");
+                walls.stream().forEach((wall) -> {
+                    sb.append(wall.getLine().getX1()).append(" ").append(wall.getLine().getY1()).append(" ").append(wall.getLine().getX2()).append(" ").append(wall.getLine().getY2()).append(" ");
                 });
                 out = sb.toString();
             }

@@ -13,11 +13,13 @@ import java.io.Serializable;
  */
 public class Player extends GameObject implements Serializable {
 
-    private final String name;
+    private static final long serialVersionUID = 1L;
+    private String name;
     private final int id;
     private static int nextId;
 
     private Point velocity = new Point(0, 0);
+    private boolean disabled = false;
 
     public Player(String name, Point position) {
         super(position);
@@ -38,6 +40,14 @@ public class Player extends GameObject implements Serializable {
 
     public Point getVelocity() {
         return velocity;
+    }
+
+    public boolean isDisabled() {
+        return disabled;
+    }
+
+    public void setDisabled(boolean disabled) {
+        this.disabled = disabled;
     }
 
     @Override

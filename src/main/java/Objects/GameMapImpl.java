@@ -2,7 +2,9 @@ package Objects;
 
 import baseinvaders.Configurations;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,10 +29,13 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     private final Map<String, Long> userScores = new ConcurrentHashMap<>();
     private final Set<Bomb> bombs = new CopyOnWriteArraySet<>();
     private final Map<String, Set<Bomb>> userBombs = new ConcurrentHashMap<>();
+    private final Set<WormHole> wormHoles = new CopyOnWriteArraySet<>();
+    private final Set<Wall> walls = new CopyOnWriteArraySet<>();
     private final Map<String, Long> userLastScan = new ConcurrentHashMap<>();
     private long ticks = 0, downtimeTicks = 0;
 
     private volatile boolean isRunning = true;
+    private volatile boolean isReady = true;
 
     public GameMapImpl() throws BaseInvadersException {
         Configurations.getUsers().forEach((player) -> {
@@ -39,23 +44,108 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         reset();
     }
 
+    // For aesthetic reasons and to guarantee no enclosed parts of the grid,
+    // the walls can only be placed in fixed locations.
+    public List<Wall> getPossibleWalls() {
+        List<Wall> walls = new ArrayList<Wall>();
+        int mapWidth =  Configurations.getMapWidth();
+        int mapHeight = Configurations.getMapHeight();
+        double screenDivisions = 4;
+        double xDistance = mapWidth / screenDivisions;
+        double yDistance = mapHeight / screenDivisions;
+        for (double i = xDistance / 2; i < mapWidth; i += xDistance) {
+            for (double j = yDistance / 2; j < mapHeight; j += yDistance) {
+                double length = Math.random() * (Configurations.getMaxWallLength()
+                        - Configurations.getMinWallLength())
+                        + Configurations.getMinWallLength();
+                walls.add(new Wall(new Point(i, j), length, Math.random() > .5));
+            }
+        }
+        return walls;
+    }
+
+    // For aesthetic reasons, the wormholes can only
+    // be placed in fixed locations.
+    public List<WormHole> getPossibleWormHoles() {
+        List<WormHole> wormHoles = new ArrayList<WormHole>();
+        int mapWidth =  Configurations.getMapWidth();
+        int mapHeight = Configurations.getMapHeight();
+        double screenDivisions = 4;
+        double xDistance = mapWidth / screenDivisions;
+        double yDistance = mapHeight / screenDivisions;
+        for (double i = xDistance / 2; i < mapWidth; i += xDistance) {
+            for (double j = yDistance / 2; j < mapHeight; j += yDistance) {
+                double radius = Math.random() * (Configurations.getMaxWormHoleRadius()
+                        - Configurations.getMinWormHoleRadius())
+                        + Configurations.getMinWormHoleRadius();
+                Point destination;
+                while (true) {
+                    destination = new Point(
+                            Math.random() * Configurations.getMapWidth(),
+                            Math.random() * Configurations.getMapHeight());
+                    boolean valid = true;
+                    for (WormHole w: wormHoles) {
+                        if (w.getPosition().distanceTo(destination) < w.getRadius()) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if (valid) break;
+                }
+                double xOffset = xDistance / (Math.random() > .5 ? 4 : -4);
+                double yOffset = yDistance / (Math.random() > .5 ? 4 : -4);
+                Point center = new Point(i + xOffset, j + yOffset);
+                wormHoles.add(new WormHole(center, radius, destination));
+            }
+        }
+        return wormHoles;
+    }
+
     private synchronized void reset() {
         ticks = 0;
+
+        // Add mines
         mines.clear();
+        double minMineSpeed = Configurations.getMinMineSpeed();
+        double maxMineSpeed = Configurations.getMaxMineSpeed();
         for (int i = 0; i < Configurations.getMineCount(); i++) {
-            mines.add(new Mine(new Point(Math.random() * Configurations.getMapWidth(), Math.random() * Configurations.getMapHeight())));
+            double speed = Math.random() * (maxMineSpeed - minMineSpeed) + minMineSpeed;
+            double angle = Math.random() * Math.PI * 2;
+            Point velocity = new Point(speed * Math.cos(angle), speed * Math.sin(angle));
+            Point position = new Point(Math.random() * Configurations.getMapWidth(), Math.random() * Configurations.getMapHeight());
+            mines.add(new Mine(position, velocity));
+        }
+
+        // Add wormholes
+        wormHoles.clear();
+        List<WormHole> availableWormHoles = getPossibleWormHoles();
+        Collections.shuffle(availableWormHoles);
+        for (int i = 0; i < Configurations.getWormHoleCount(); i++) {
+            if (i >= availableWormHoles.size()) break;
+            WormHole w = availableWormHoles.get(i);
+            wormHoles.add(w);
+        }
+
+        // Add walls
+        walls.clear();
+        List<Wall> availableWalls = getPossibleWalls();
+        Collections.shuffle(availableWalls);
+        for (int i = 0; i < Configurations.getWallCount(); i++) {
+            if (i >= availableWalls.size()) break;
+            Wall w = availableWalls.get(i);
+            walls.add(w);
         }
 
         userScores.clear();
         userBombs.clear();
         bombs.clear();
-
+        
         Configurations.getUsers().stream().forEach(player -> {
             userScores.put(player, 0L);
             userBombs.put(player, new CopyOnWriteArraySet<>());
         });
 
-        players.values().stream().forEach(player -> {
+        players.values().stream().forEach(player-> {
             player.getPosition().setX(Configurations.getMapWidth() / 2).setY(Configurations.getMapHeight() / 2);
             player.getVelocity().setX(0).setY(0);
         });
@@ -63,6 +153,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         userAcceleration.clear();
         userAngle.clear();
         userBrakes.clear();
+
         userLastScan.clear();
     }
 
@@ -72,7 +163,21 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     }
 
     public synchronized void setRunning(boolean run) {
-        this.isRunning = run;
+        if (Configurations.getAutoRestart()) {
+            this.isRunning = run;
+        }
+        else {
+            if (run) {
+                if (isReady) {
+                    this.isReady = false;
+                    this.isRunning = true;
+                }
+            }
+            else {
+                this.isRunning = false;
+                this.isReady = false;
+            }
+        }
     }
 
     private synchronized void nextRound() {
@@ -83,43 +188,117 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         players.entrySet().stream().parallel().forEach(entry -> {
             String user = entry.getKey();
             Player player = entry.getValue();
+            Point p = player.getPosition();
+            Point v =  player.getVelocity();
+            double xOld = p.getX(), yOld = p.getY();
             if (userBrakes.containsKey(user) && userBrakes.get(user)) {
-                player.getVelocity().multiply(Configurations.getBrakeFriction());
-                Point p = player.getPosition();
-                p.add(player.getVelocity()).setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
-
+                v.multiply(Configurations.getBrakeFriction());
+                p.add(v).setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
             } else {
-                double acceleration = Configurations.getSpeed() * (userAngle.containsKey(user) && userAcceleration.containsKey(user) ? userAcceleration.get(user) : 0);
+                double acceleration = 0;
+                // Do not apply userAcceleration if user is disabled
+                if (!player.isDisabled()) {
+                    acceleration = Configurations.getSpeed() * (userAngle.containsKey(user) && userAcceleration.containsKey(user) ? userAcceleration.get(user) : 0);
+                }
                 double angle = userAngle.containsKey(user) ? userAngle.get(user) : 0;
-
                 double x = acceleration * Math.cos(angle);
                 double y = acceleration * Math.sin(angle);
-
-                player.getVelocity().add(x * .5, y * .5);
-
-                Point p = player.getPosition();
-                p.add(player.getVelocity()).setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
-
-                player.getVelocity().add(x * .5, y * .5);
-
+                v.add(x * .5, y * .5);
+                p.add(v).setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
+                v.add(x * .5, y * .5);
             }
+
+            double xNew = p.getX(), yNew = p.getY();
+            Line path = new Line(xOld, yOld, xNew, yNew);
+
+            // Handle walls
+            if (path.getLength() > Configurations.getMapWidth() / 2) {
+                // Ship is crossing to other end of map... or is going so fast
+                // that walls aren't relevant anyway
+            } else {
+                for (Wall wall: walls) {
+                    if (wall.getLine().intersects(path)) {
+
+                        // Get the new angle of the ship and apply it
+                        double oldAngle = Math.atan2(v.getY(), v.getX());
+                        double newAngle = wall.getLine().getReflectedAngle(oldAngle);
+                        double speed = v.getX() / Math.cos(oldAngle);
+                        v.setX(speed * Math.cos(newAngle));
+                        v.setY(speed * Math.sin(newAngle));
+
+                        // Adjust the location of the ship
+                        // NOTE: This is not as accurate as it could be. Ideally, we should:
+                        // 1) Find the exact point of intersection between the wall and the path
+                        // 2) Calculate the percentage P of the path that occured after collision
+                        // 3) Set the ship's location to the point of intersection plus (P * v)
+                        p.add(v).setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
+                    }
+                }
+            }
+
             player.getVelocity().multiply(Configurations.getFriction());
             player.nextRound();
         });
 
         mines.stream().parallel().forEach((Mine mine) -> {
 
-            Player[] ps = players.values().stream().filter(player -> player.distanceTo(mine) < Configurations.getCaptureRadius()).toArray(Player[]::new);
+            Player[] ps = players.values().stream().filter(player -> !player.isDisabled() && player.distanceTo(mine) < Configurations.getCaptureRadius()).toArray(Player[]::new);
             if (ps.length == 1) {
                 mine.setOwner(ps[0]);
+            }
+
+            // Update mine location
+            Point p = mine.getPosition();
+            Point v = mine.getVelocity();
+            p.add(v).setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
+        });
+
+        // Check if players are caught in worm holes
+        players.entrySet().stream().parallel().forEach(playerEntry -> {
+            Player player = playerEntry.getValue();
+            WormHole currentWormHole = null;
+            for (WormHole wormHole: wormHoles) {
+                if (wormHole.getPosition().distanceTo(player.getPosition())
+                        < wormHole.getRadius()) {
+                    currentWormHole = wormHole;
+                    break;
+                }
+            };
+            if (currentWormHole != null) {
+                player.setDisabled(true);
+
+                // Set velocity towards center of worm hole
+                if (player.getPosition().distanceTo(currentWormHole.getPosition()) > Configurations.getWormHoleCenterRadius()) {
+                    double direction = player.getPosition().directionTo(currentWormHole.getPosition());
+                    double gravity = Configurations.getWormHoleGravity();
+                    double x = gravity * Math.cos(direction);
+                    double y = gravity * Math.sin(direction);
+                    player.getVelocity().add(x, y);
+
+                // Transport players in center of worm hole
+                } else {
+                    Point destination = currentWormHole.getDestination();
+                    player.getPosition().setX(destination.getX());
+                    player.getPosition().setY(destination.getY());
+                    player.getVelocity().setX(0).setY(0);
+                }
+            } else {
+                player.setDisabled(false);
             }
         });
 
         mines.stream().filter((mine) -> (mine.getOwner() != null)).forEach((mine) -> {
-            userScores.put(mine.getOwner().getName(), 1 + userScores.get(mine.getOwner().getName()));
+            Player player = mine.getOwner();
+            String name = player.getName();
+            userScores.put(name, 1 + userScores.get(name));
         });
+
         Set<Bomb> removeBombs = new CopyOnWriteArraySet<>();
         bombs.stream().parallel().forEach(bomb -> {
+            // If bomb is triggerable, trigger if any player is within range
+            if (bomb.isTriggerBomb() && players.values().stream().filter((player) -> (player.distanceTo(bomb) < Configurations.getBombTriggerRadius())).count() > 0) {
+                bomb.trigger();
+            }
             if (bomb.isExploded()) {
                 removeBombs.add(bomb);
                 players.values().stream().filter((player) -> (player.distanceTo(bomb) < Configurations.getBombExplosionRadius())).forEach((player) -> {
@@ -150,6 +329,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         data.get(user).add(update);
     }
 
+    public synchronized boolean isUserDisabled(String user) {
+        Player player = players.get(user);
+        return player.isDisabled();
+    }
+
     public synchronized void setAcceleration(String user, double angle, double acceleration) throws BaseInvadersException {
         if (acceleration < 0 || acceleration > 1) {
             throw new BaseInvadersException("Acceleration must be between 0 and 1");
@@ -174,8 +358,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         if (userBombs.get(user).size() >= Configurations.getMaxBombs()) {
             throw new BaseInvadersException("Unable to place this many bombs at a time");
         }
-        if (delay > Configurations.getMaxBombDelay() || delay < Configurations.getMinBombDelay()) {
-            throw new BaseInvadersException("Bomb delay is out of allowable range");
+        if (delay == -1 && !Configurations.getTriggerBombsEnabled()) {
+           throw new BaseInvadersException("Trigger bombs are not enabled");
+        }
+        if (delay != -1 && (delay > Configurations.getMaxBombDelay() || delay < Configurations.getMinBombDelay())) {
+           throw new BaseInvadersException("Bomb delay is out of allowable range");
         }
 
         Bomb b = new Bomb(player, p, delay);
@@ -196,6 +383,16 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     @Override
     public synchronized Collection<Mine> getMines() {
         return mines;
+    }
+
+    @Override
+    public synchronized Collection<WormHole> getWormHoles() {
+        return wormHoles;
+    }
+
+    @Override
+    public synchronized Collection<Wall> getWalls() {
+        return walls;
     }
 
     @Override
@@ -252,6 +449,9 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
 
     @Override
     public void run() {
+        if (Configurations.getAutoRestart()) {
+            isRunning = true;
+        }
         while (true) {
             try {
                 Thread.sleep(Configurations.getTickDelay() - (System.currentTimeMillis() % Configurations.getTickDelay()));
@@ -266,15 +466,23 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                         }
                     } else {
                         isRunning = false;
+                        isReady = false;
                         downtimeTicks = 0;
                     }
                 } else {
-                    if (Configurations.getDowntimeTicks() != null && downtimeTicks < Configurations.getDowntimeTicks()) {
-                        downtimeTicks++;
-                    } else {
+                    if (Configurations.getAutoRestart()) {
+                        if (Configurations.getDowntimeTicks() != null && downtimeTicks < Configurations.getDowntimeTicks()) {
+                            downtimeTicks++;
+                        } else {
+                            ticks = 0;
+                            reset();
+                            isRunning = true;
+                        }
+                    }
+                    else if (!isReady) {
                         ticks = 0;
                         reset();
-                        isRunning = true;
+                        isReady = true;
                     }
                 }
             } catch (InterruptedException ex) {
@@ -290,8 +498,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         private final Set<Mine> mines;
         private final Map<String, Long> userScores;
         private final Set<Bomb> bombs;
+        private final Set<WormHole> wormHoles;
+        private final Set<Wall> walls;
         private final long ticks, downtimeTicks;
         private final boolean isRunning;
+        private final boolean isReady;
 
         @Override
         public Collection<Player> getPlayers() {
@@ -306,6 +517,16 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         @Override
         public Collection<Mine> getMines() {
             return mines;
+        }
+
+        @Override
+        public Collection<WormHole> getWormHoles() {
+            return wormHoles;
+        }
+
+        @Override
+        public Collection<Wall> getWalls() {
+            return walls;
         }
 
         @Override
@@ -345,7 +566,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             return bombs;
         }
 
-        public GameMapMessage(Map<String, Player> players, Map<String, List<String>> userUpdates, Set<Mine> mines, Map<String, Long> userScores, Set<Bomb> bombs, long ticks, long downtimeTicks, boolean isRunning) {
+        public GameMapMessage(Map<String, Player> players, Map<String, List<String>> userUpdates, Set<Mine> mines, Map<String, Long> userScores, Set<Bomb> bombs, Set<WormHole> wormHoles, Set<Wall> walls, long ticks, long downtimeTicks, boolean isRunning, boolean isReady) {
             this.players = new HashMap<>();
             players.entrySet().stream().forEach((player) -> {
                 this.players.put(player.getKey(), new Player(player.getValue()));
@@ -356,11 +577,20 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                 this.mines.add(new Mine(mine));
             });
             this.bombs = new HashSet<>(bombs);
+            this.wormHoles = new HashSet<>();
+            wormHoles.stream().forEach((wormHole) -> {
+                this.wormHoles.add(new WormHole(wormHole));
+            });
+            this.walls = new HashSet<>();
+            walls.stream().forEach((wall) -> {
+                this.walls.add(new Wall(wall));
+            });
 
             this.userScores = new HashMap<>(userScores);
             this.ticks = ticks;
             this.downtimeTicks = downtimeTicks;
             this.isRunning = isRunning;
+            this.isReady = isReady;
 
         }
 
@@ -378,7 +608,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         if (lastMapTick == ticks && lastMap != null) {
             return lastMap;
         }
-        lastMap = new GameMapMessage(players, userUpdates, mines, userScores, bombs, ticks, downtimeTicks, isRunning);
+        lastMap = new GameMapMessage(players, userUpdates, mines, userScores, bombs, wormHoles, walls, ticks, downtimeTicks, isRunning, isReady);
         lastMapTick = ticks;
         return lastMap;
     }
