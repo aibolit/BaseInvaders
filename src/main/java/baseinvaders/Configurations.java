@@ -58,7 +58,7 @@ public class Configurations {
     private static double minWormHoleRadius = 150, maxWormHoleRadius = 500;
     private static double wormHoleCenterRadius = 10;
     private static double wormHoleGravity = 2;
-    private static int wormHoleCount = 6;
+    private static int wormHoleCount = 0;
     private static int mineCount = 30;
     private static int mapWidth = 10000, mapHeight = 10000;
     private static boolean useLocalUi = true;
@@ -343,6 +343,8 @@ public class Configurations {
                 case "scan-delay":
                     scanDelay = Long.parseLong(st.nextToken());
                     break;
+                case "wormhole-count":
+                    wormHoleCount = Integer.parseInt(st.nextToken());
                 case "use-local-ui":
                     switch (st.nextToken()) {
                     case "true":
