@@ -85,6 +85,10 @@ public class Point implements Serializable {
         return dist;
     }
 
+    public double getMagnitude() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
     public Point add(Point p) {
         this.x += p.x;
         this.y += p.y;

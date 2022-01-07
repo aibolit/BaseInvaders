@@ -301,6 +301,16 @@ public class BaseInvadersServer implements BIServer, Runnable {
                 out = "ACCELERATE_OUT DONE";
             }
             break;
+            case "MOVE_TO": {
+                gameMap.setDestination(user, Double.parseDouble(st.nextToken()), Double.parseDouble(st.nextToken()));
+                out = "MOVE_TO DONE";
+            }
+            break;
+            case "TELEPORT": {
+                gameMap.teleport(user, Double.parseDouble(st.nextToken()), Double.parseDouble(st.nextToken()));
+                out = "TELEPORT DONE";
+            }
+            break;
             case "BRAKE": {
                 gameMap.setBrake(user);
                 out = "BRAKE_OUT DONE";

@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.Collections;
+import javafx.util.Pair;  
 
 /**
  *
@@ -25,6 +26,8 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     private final Map<String, Double> userAcceleration = new ConcurrentHashMap<>();
     private final Map<String, Double> userAngle = new ConcurrentHashMap<>();
     private final Map<String, Boolean> userBrakes = new ConcurrentHashMap<>();
+    private final Map<String, Pair<Point, Double>> userDestinations = new ConcurrentHashMap<>();
+    private final Map<String, Double> userArrivingDeceleration = new ConcurrentHashMap<>();
     private final Set<Mine> mines = new CopyOnWriteArraySet<>();
     private final Map<String, Long> userScores = new ConcurrentHashMap<>();
     private final Set<Bomb> bombs = new CopyOnWriteArraySet<>();
@@ -117,6 +120,8 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         userAcceleration.clear();
         userAngle.clear();
         userBrakes.clear();
+        userDestinations.clear();
+        userArrivingDeceleration.clear();
         userLastScan.clear();
     }
 
@@ -129,10 +134,40 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         this.isRunning = run;
     }
 
+    private boolean isNearingDestination(String user,  double remainingDistance, double slowDownDistance) {
+        return (remainingDistance < slowDownDistance && !userArrivingDeceleration.containsKey(user));
+    }
+
+    private void slowForArrival(String user, double remainingDistance, double currentSpeedPerSecond) {
+        double decelTime = 2 * remainingDistance / currentSpeedPerSecond;
+        double decel = -currentSpeedPerSecond / decelTime;
+        userArrivingDeceleration.put(user, decel);
+    }
+
+    private boolean isArrived(double remainingDistance) {
+        return remainingDistance < Configurations.getArrivalDistance();
+    }
+
+    private double getNextSpeed(double currentSpeedPerSecond, double accelPerSecond, double percent) {
+        return Math.min(Configurations.getMaxSpeed(), currentSpeedPerSecond + accelPerSecond * Configurations.getFixedDelta() * percent); // per second
+    }
+
+    private void updatePlayerVelocity(Player player, double currentSpeedPerSecond, Point direction) {
+        player.getVelocity().
+            setX(direction.getX() * currentSpeedPerSecond * Configurations.getFixedDelta()).
+            setY(direction.getY() * currentSpeedPerSecond * Configurations.getFixedDelta());
+    }
+
+    private void updatePlayerPosition(Player player, Point position) {
+        player.getPosition().setX(position.getX() % Configurations.getMapWidth()).setY(position.getY()  % Configurations.getMapHeight());
+    }
+
     private synchronized void nextRound() {
         if (!isRunning) {
             return;
         }
+
+        Set<String> usersDestinationsToClear = new CopyOnWriteArraySet<>();
 
         players.entrySet().stream().parallel().forEach(entry -> {
             String user = entry.getKey();
@@ -143,8 +178,51 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                 p.add(player.getVelocity())
                         .setX((p.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth())
                         .setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
+                player.getVelocity().multiply(Configurations.getFriction());
+            }else if(userDestinations.containsKey(user)) {
+                Pair<Point, Double> userDestination = userDestinations.get(user);
+                Point destination = userDestination.getKey();
+                Double slowDownDistance = userDestination.getValue();
+                double distance = player.getPosition().distanceTo(destination);
+                double currentSpeed = player.getVelocity().getMagnitude() / Configurations.getFixedDelta(); // per second
 
-            } else {
+                // Do we need to slowdown for arrival?
+                if(isNearingDestination(user, distance, slowDownDistance)) {
+                    slowForArrival(user, distance, currentSpeed);
+                }
+
+                // Get direction
+                double angle = player.getPosition().directionTo(destination);
+                Point direction = new Point(Math.cos(angle), Math.sin(angle));
+
+                double accel = userArrivingDeceleration.containsKey(user) ? userArrivingDeceleration.get(user) : Configurations.getDefaultAcceleration(); // per second
+
+                // System.err.println("accel: " + accel + " current speed: " + currentSpeed / Configurations.getFixedDelta() + " rem dist: " + distance);
+
+                // Snap to position upon arrival
+                if(isArrived(distance)) {
+                    //System.err.println("Arrived!!!: " + distance);
+                    updatePlayerVelocity(player, 0, new Point(0, 0));
+                    updatePlayerPosition(player, destination);
+                    userArrivingDeceleration.remove(user);
+                    userAcceleration.remove(user);
+                    usersDestinationsToClear.add(user);
+                }
+                // Keep moving
+                else {
+                    // Apply half vel now
+                    currentSpeed = getNextSpeed(currentSpeed, accel, 0.5);
+                    updatePlayerVelocity(player, currentSpeed, direction);
+
+                    // Update position
+                    updatePlayerPosition(player, new Point(player.getPosition()).add(player.getVelocity()));
+
+                    // Apply half vel later
+                    currentSpeed = getNextSpeed(currentSpeed, accel, 0.5);
+                    updatePlayerVelocity(player, currentSpeed, direction);
+                }
+            }
+             else {
                 double acceleration = 0;
 
                 if (!player.isDisabled()) {
@@ -167,10 +245,16 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                         .setY((p.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
 
                 player.getVelocity().add(x * .5, y * .5);
-
+                player.getVelocity().multiply(Configurations.getFriction());
             }
-            player.getVelocity().multiply(Configurations.getFriction());
+
             player.nextRound();
+        });
+
+        usersDestinationsToClear.forEach(user -> {
+            if(userDestinations.containsKey(user)) {
+                userDestinations.remove(user);
+            }
         });
 
         mines.stream().parallel().forEach((Mine mine) -> {
@@ -266,6 +350,25 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         userAcceleration.put(user, acceleration);
     }
 
+    public synchronized void teleport(String user, double x, double y) {
+        Point dest = new Point(x  % Configurations.getMapWidth(), y  % Configurations.getMapHeight());
+
+        updatePlayerPosition(players.get(user), dest);
+    }
+
+    public synchronized void setDestination(String user, double x, double y) {
+        Point dest = new Point(x  % Configurations.getMapWidth(), y  % Configurations.getMapHeight());
+
+        userBrakes.put(user, false);
+        userAcceleration.remove(user);
+        userArrivingDeceleration.remove(user);
+
+        Player player = players.get(user);
+        double distance = player.getPosition().distanceTo(dest);
+        Double slowDownDistance = distance * Configurations.getPercentOfDestinationToSlowdown();
+        userDestinations.put(user, new Pair<Point, Double>(dest, slowDownDistance));
+    }
+
     public synchronized void setBrake(String user) {
         userBrakes.put(user, true);
         userAngle.put(user, 0.0);
@@ -356,7 +459,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     @Override
     public synchronized String toString() {
         return "GameMap{" + "players=" + players + ", userUpdates=" + userUpdates + ", userAcceleration="
-                + userAcceleration + ", userAngle=" + userAngle + ", userBrakes=" + userBrakes + ", mines=" + mines
+                + userAcceleration + ", userAngle=" + userAngle + ", userBrakes=" + userBrakes + ", userDestinations=" + userDestinations + ", mines=" + mines
                 + ", userScores=" + userScores + ", isRunning=" + isRunning + '}';
     }
 

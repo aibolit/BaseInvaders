@@ -41,9 +41,17 @@ public class Configurations {
     private static Long downtimeTicks = 1200L;
     private static long tickDelay = 25;
 
+
     private static double friction = .99;
     private static double brakeFriction = .987;
     private static double speed = .1;
+
+    private static double fixedDelta = tickDelay / 1000.0;
+    private static double defaultAcceleration = 200; // per second
+    private static double maxSpeed = 1000; // per second
+    private static double percentOfDestinationToSlowdown = 0.3;
+    private static double arrivalDistance = 1;
+
     private static double captureRadius = 5;
     private static double visionRadius = 150;
     private static int maxBombs = 1;
@@ -170,6 +178,26 @@ public class Configurations {
 
     public static double getSpeed() {
         return speed;
+    }
+
+    public static double getFixedDelta() {
+        return fixedDelta;
+    }
+
+    public static double getDefaultAcceleration() {
+        return defaultAcceleration;
+    }
+
+    public static double getMaxSpeed() {
+        return maxSpeed;
+    }
+
+    public static double getPercentOfDestinationToSlowdown() {
+        return percentOfDestinationToSlowdown;
+    }
+
+    public static double getArrivalDistance() {
+        return arrivalDistance;
     }
 
     public static double getCaptureRadius() {
