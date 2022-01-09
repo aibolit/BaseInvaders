@@ -47,20 +47,23 @@ public class Configurations {
     private static double speed = .1;
 
     private static double fixedDelta = tickDelay / 1000.0;
+    private static double ticksPerSec = 1.0 / fixedDelta;
     private static double defaultAcceleration = 200; // per second
     private static double maxSpeed = 1000; // per second
     private static double percentOfDestinationToSlowdown = 0.3;
     private static double arrivalDistance = 1;
+    private static double mineralPerSecondTime = 1.0; // 1 mineral per X second
+    private static long mineralCapacity = 500; // Max minerals held at one time
 
     private static double captureRadius = 5;
     private static double visionRadius = 150;
     private static int maxBombs = 1;
     private static double bombPlacementRadius = 50;
-    private static double bombExplosionRadius = 15;
+    private static double bombExplosionRadius = 150;
     private static long bombDelay = 100;
     private static long minBombDelay = 20, maxBombDelay = 200;
     private static double bombPower = 15;
-    private static double scanRadius = 125;
+    private static double scanRadius = 500;
     private static long scanDelay = 100;
 
     private static double minWormHoleRadius = 150, maxWormHoleRadius = 500;
@@ -68,6 +71,7 @@ public class Configurations {
     private static double wormHoleGravity = 2;
     private static int wormHoleCount = 0;
     private static int mineCount = 30;
+    private static int stationCount = 2;
     private static int mapWidth = 10000, mapHeight = 10000;
     private static boolean useLocalUi = true;
 
@@ -184,6 +188,10 @@ public class Configurations {
         return fixedDelta;
     }
 
+    public static double getTicksPerSec() {
+        return ticksPerSec;
+    }
+
     public static double getDefaultAcceleration() {
         return defaultAcceleration;
     }
@@ -198,6 +206,14 @@ public class Configurations {
 
     public static double getArrivalDistance() {
         return arrivalDistance;
+    }
+
+    public static double getMineralPerSecondTime() {
+        return mineralPerSecondTime;
+    }
+
+    public static long getMineralCapacity() {
+        return mineralCapacity;
     }
 
     public static double getCaptureRadius() {
@@ -218,6 +234,10 @@ public class Configurations {
 
     public static int getMineCount() {
         return mineCount;
+    }
+
+    public static int getStationCount() {
+        return stationCount;
     }
 
     public static double getVisionRadius() {
@@ -425,10 +445,10 @@ public class Configurations {
         out.append(" BRAKEFRICTION ").append(brakeFriction);
         out.append(" BOMBPLACERADIUS ").append(bombPlacementRadius);
         out.append(" BOMBEFFECTRADIUS ").append(bombExplosionRadius);
-        out.append(" BOMBDELAY ").append(bombDelay);
+        out.append(" BOMBDELAY ").append(bombDelay / ticksPerSec);
         out.append(" BOMBPOWER ").append(bombPower);
         out.append(" SCANRADIUS ").append(scanRadius);
-        out.append(" SCANDELAY ").append(scanDelay);
+        out.append(" SCANDELAY ").append(scanDelay / ticksPerSec).append(" ");
         return out.toString();
     }
 

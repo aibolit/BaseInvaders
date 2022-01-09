@@ -81,10 +81,12 @@ public class GameStatus extends javax.swing.JFrame {
 
             private final String user;
             private final long score;
+            private final long minerals;
 
-            UserScore(String user, long score) {
+            UserScore(String user, long score, long minerals) {
                 this.user = user;
                 this.score = score;
+                this.minerals = minerals;
             }
 
             public String getUser() {
@@ -95,6 +97,10 @@ public class GameStatus extends javax.swing.JFrame {
                 return score;
             }
 
+            public long getMinerals() {
+                return minerals;
+            }
+
             @Override
             public int compareTo(UserScore t) {
                 double rv = t.getScore() - this.getScore();
@@ -103,13 +109,13 @@ public class GameStatus extends javax.swing.JFrame {
 
             @Override
             public String toString() {
-                return user + " " + score;
+                return user + " " + score + " " + minerals;
             }
         }
 
         List<UserScore> scores = new ArrayList<>();
         baseInvadersServer.getGameMap().getPlayers().stream().forEach((player) -> {
-            scores.add(new UserScore(player.getName(), baseInvadersServer.getGameMap().getUserScore(player.getName())));
+            scores.add(new UserScore(player.getName(), baseInvadersServer.getGameMap().getUserScore(player.getName()), baseInvadersServer.getGameMap().getUserMinerals(player.getName())));
         });
         Collections.sort(scores);
 
@@ -176,7 +182,8 @@ public class GameStatus extends javax.swing.JFrame {
         cg.setColor(Color.WHITE);
         cg.setFont(new Font("Arial", Font.BOLD, 32));
         cg.drawString("Player", 24, 230);
-        cg.drawString("Score", 420, 230);
+        cg.drawString("Score", 260, 230);
+        cg.drawString("Minerals", 380, 230);
 
         cg.setColor(AMBER);
         DecimalFormat scoreFormat = new DecimalFormat("");
@@ -189,7 +196,8 @@ public class GameStatus extends javax.swing.JFrame {
             cg.setFont(playerFont);
             cg.drawString(scores.get(i).getUser(), 50, 270 + 40 * i);
             cg.setFont(scoreFont);
-            cg.drawString(String.format("%19s", scores.get(i).getScore()), 90, 270 + 40 * i);
+            cg.drawString(String.format("%19s", scores.get(i).getScore()), -70, 270 + 40 * i);
+            cg.drawString(String.format("%19s", scores.get(i).getMinerals()), 90, 270 + 40 * i);
         }
 
         cg.setTransform(root);
@@ -232,6 +240,16 @@ public class GameStatus extends javax.swing.JFrame {
                     cg.drawImage(Configurations.getPlayerImage(mine.getOwner().getPlayerId()), -10, -10, 20, 20, null);
                 }
                 cg.drawOval(-5, -5, 10, 10);
+                cg.setTransform(tloc);
+            });
+
+            cg.setColor(Color.GREEN);
+
+            baseInvadersServer.getGameMap().getStations().stream().forEach((station) -> {
+                AffineTransform tloc = cg.getTransform();
+                cg.translate(station.getPosition().getX(), station.getPosition().getY());
+                cg.scale(Configurations.getMapWidth() / mapScale, Configurations.getMapHeight() / mapScale);
+                cg.drawOval(-10, -10, 20, 20);
                 cg.setTransform(tloc);
             });
 

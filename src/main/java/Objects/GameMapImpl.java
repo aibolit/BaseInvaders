@@ -29,12 +29,16 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     private final Map<String, Pair<Point, Double>> userDestinations = new ConcurrentHashMap<>();
     private final Map<String, Double> userArrivingDeceleration = new ConcurrentHashMap<>();
     private final Set<Mine> mines = new CopyOnWriteArraySet<>();
+    private final Set<Station> stations = new CopyOnWriteArraySet<>();
     private final Map<String, Long> userScores = new ConcurrentHashMap<>();
+    private final Map<String, Long> userMinerals = new ConcurrentHashMap<>();
+    private final Map<String, Long> userCapacity = new ConcurrentHashMap<>();
     private final Set<Bomb> bombs = new CopyOnWriteArraySet<>();
     private final Map<String, Set<Bomb>> userBombs = new ConcurrentHashMap<>();
     private final Map<String, Long> userLastScan = new ConcurrentHashMap<>();
     private final Set<WormHole> wormHoles = new CopyOnWriteArraySet<>();
     private long ticks = 0, downtimeTicks = 0;
+    private double mineTimer = 0.;
 
     private volatile boolean isRunning = true;
 
@@ -90,6 +94,34 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                     Math.random() * Configurations.getMapHeight())));
         }
 
+        stations.clear();
+        for (int i = 0; i < Configurations.getStationCount(); i++) {
+
+            // Center-ish
+            if(Configurations.getStationCount() == 1) {
+                stations.add(new Station(new Point( Configurations.getMapWidth()    * 0.4 + Math.random() * Configurations.getMapWidth()   * 0.2,
+                                                    Configurations.getMapHeight()   * 0.4 + Math.random() * Configurations.getMapHeight()  * 0.2)));
+            }
+            // Top left / bottom right
+            else if(Configurations.getStationCount() == 2) {
+                // Quadrant 1
+                if(i == 0) {
+                    stations.add(new Station(new Point( Configurations.getMapWidth()    * 0 + Math.random() * Configurations.getMapWidth()   * 0.5,
+                                                        Configurations.getMapHeight()   * 0 + Math.random() * Configurations.getMapHeight()  * 0.5)));
+                }
+                else {
+                // Quadrant 2
+                    stations.add(new Station(new Point( Configurations.getMapWidth()    * 0.5 + Math.random() * Configurations.getMapWidth()   * 0.5,
+                                                        Configurations.getMapHeight()   * 0.5 + Math.random() * Configurations.getMapHeight()  * 0.5)));
+                }
+            }
+            // Complete random
+            else {
+                stations.add(new Station(new Point( Configurations.getMapWidth()    * 0 + Math.random() * Configurations.getMapWidth()   * 1,
+                                                    Configurations.getMapHeight()   * 0 + Math.random() * Configurations.getMapHeight()  * 1)));
+            }
+        }
+
         wormHoles.clear();
         List<WormHole> availableWormHoles = getPossibleWormHoles();
         Collections.shuffle(availableWormHoles);
@@ -104,11 +136,15 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         System.out.println(players);
 
         userScores.clear();
+        userMinerals.clear();
+        userCapacity.clear();
         userBombs.clear();
         bombs.clear();
 
         Configurations.getUsers().stream().forEach(player -> {
             userScores.put(player, 0L);
+            userMinerals.put(player, 0L);
+            userCapacity.put(player, Configurations.getMineralCapacity());
             userBombs.put(player, new CopyOnWriteArraySet<>());
         });
 
@@ -301,9 +337,20 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             }
         });
 
+        // Compute how often a mine awards minerals
+        mineTimer += Configurations.getFixedDelta();
+        boolean awardMineral = false;
+        if(mineTimer >= Configurations.getMineralPerSecondTime()) {
+            awardMineral = true;
+            mineTimer = 0.;
+        }
+        final boolean captureAwardMineral = awardMineral;
         mines.stream().filter((mine) -> (mine.getOwner() != null)).forEach((mine) -> {
-            userScores.put(mine.getOwner().getName(), 1 + userScores.get(mine.getOwner().getName()));
+            if(captureAwardMineral) {
+                userMinerals.put(mine.getOwner().getName(), Math.min(userCapacity.get(mine.getOwner().getName()), 1 + userMinerals.get(mine.getOwner().getName())));
+            }
         });
+
         Set<Bomb> removeBombs = new CopyOnWriteArraySet<>();
         bombs.stream().parallel().forEach(bomb -> {
             if (bomb.isExploded()) {
@@ -311,6 +358,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                 players.values().stream()
                         .filter((player) -> (player.distanceTo(bomb) < Configurations.getBombExplosionRadius()))
                         .forEach((player) -> {
+                            wipeExistingDestination(player.getName());
                             double angle = bomb.directionTo(player);
                             double acceleration = Configurations.getBombPower()
                                     * Math.sqrt((Configurations.getBombExplosionRadius() - bomb.distanceTo(player))
@@ -356,12 +404,40 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         updatePlayerPosition(players.get(user), dest);
     }
 
-    public synchronized void setDestination(String user, double x, double y) {
-        Point dest = new Point(x  % Configurations.getMapWidth(), y  % Configurations.getMapHeight());
+    public synchronized boolean sellMineral(String user) {
 
+        Player player = players.get(user);
+        boolean isNearStation = false;
+
+        for(Station station : stations) {
+            if(station.distanceTo(player) < Configurations.getCaptureRadius() && !player.isDisabled()) {
+                isNearStation = true;
+                break;
+            }
+        }
+
+        if (!isNearStation) {
+            return false;
+        }
+
+        // Allow sell to go through
+        Long currentMinerals = userMinerals.get(user);
+        userScores.put(user, currentMinerals + userScores.get(user));
+        userMinerals.put(user, 0L);
+
+        return true;
+    }
+
+    private synchronized void wipeExistingDestination(String user) {
         userBrakes.put(user, false);
         userAcceleration.remove(user);
         userArrivingDeceleration.remove(user);
+        userDestinations.remove(user);
+    }
+    public synchronized void setDestination(String user, double x, double y) {
+        Point dest = new Point(x  % Configurations.getMapWidth(), y  % Configurations.getMapHeight());
+
+        wipeExistingDestination(user);
 
         Player player = players.get(user);
         double distance = player.getPosition().distanceTo(dest);
@@ -407,6 +483,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     public synchronized Collection<Mine> getMines() {
         return mines;
     }
+    
+    @Override
+    public synchronized Collection<Station> getStations() {
+        return stations;
+    }
 
     @Override
     public synchronized long getUserScore(String user) {
@@ -414,6 +495,22 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             return 0;
         }
         return userScores.get(user);
+    }
+
+    @Override
+    public synchronized long getUserMinerals(String user) {
+        if (!userMinerals.containsKey(user)) {
+            return 0;
+        }
+        return userMinerals.get(user);
+    }
+
+    @Override
+    public synchronized long getUserCapacity(String user) {
+        if (!userCapacity.containsKey(user)) {
+            return 0;
+        }
+        return userCapacity.get(user);
     }
 
     @Override
@@ -460,7 +557,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     public synchronized String toString() {
         return "GameMap{" + "players=" + players + ", userUpdates=" + userUpdates + ", userAcceleration="
                 + userAcceleration + ", userAngle=" + userAngle + ", userBrakes=" + userBrakes + ", userDestinations=" + userDestinations + ", mines=" + mines
-                + ", userScores=" + userScores + ", isRunning=" + isRunning + '}';
+                + ", stations=" + stations + ", userScores=" + userScores + ", userMinerals=" + userMinerals + ", isRunning=" + isRunning + '}';
     }
 
     @Override
@@ -509,6 +606,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         private final Map<String, Player> players;
         private final Map<String, List<String>> userUpdates;
         private final Set<Mine> mines;
+        private final Set<Station> stations;
         private final Set<WormHole> wormHoles;
         private final Map<String, Long> userScores;
         private final Set<Bomb> bombs;
@@ -531,11 +629,32 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         }
 
         @Override
+        public Collection<Station> getStations() {
+            return stations;
+        }
+
+        @Override
         public long getUserScore(String user) {
             if (!userScores.containsKey(user)) {
                 return 0;
             }
             return userScores.get(user);
+        }
+
+        @Override
+        public long getUserMinerals(String user) {
+            if (!userMinerals.containsKey(user)) {
+                return 0;
+            }
+            return userMinerals.get(user);
+        }
+
+        @Override
+        public long getUserCapacity(String user) {
+            if (!userCapacity.containsKey(user)) {
+                return 0;
+            }
+            return userCapacity.get(user);
         }
 
         @Override
@@ -567,7 +686,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             return bombs;
         }
 
-        public GameMapMessage(Map<String, Player> players, Map<String, List<String>> userUpdates, Set<Mine> mines,
+        public GameMapMessage(Map<String, Player> players, Map<String, List<String>> userUpdates, Set<Mine> mines, Set<Station> stations,
                 Map<String, Long> userScores, Set<Bomb> bombs, Set<WormHole> wormHoles, long ticks, long downtimeTicks,
                 boolean isRunning) {
             this.players = new HashMap<>();
@@ -578,6 +697,10 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             this.mines = new HashSet<>();
             mines.stream().forEach((mine) -> {
                 this.mines.add(new Mine(mine));
+            });
+            this.stations = new HashSet<>();
+            stations.stream().forEach((station) -> {
+                this.stations.add(new Station(station));
             });
             this.bombs = new HashSet<>(bombs);
             this.wormHoles = new HashSet<>(wormHoles);
@@ -607,7 +730,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         if (lastMapTick == ticks && lastMap != null) {
             return lastMap;
         }
-        lastMap = new GameMapMessage(players, userUpdates, mines, userScores, bombs, wormHoles, ticks, downtimeTicks,
+        lastMap = new GameMapMessage(players, userUpdates, mines, stations, userScores, bombs, wormHoles, ticks, downtimeTicks,
                 isRunning);
         lastMapTick = ticks;
         return lastMap;

@@ -19,7 +19,13 @@ public interface GameMap {
 
     public Collection<Mine> getMines();
 
+    public Collection<Station> getStations();
+
     public long getUserScore(String user);
+
+    public long getUserMinerals(String user);
+
+    public long getUserCapacity(String user);
 
     public Map<String, Set<Mine>> getUserMines();
 
