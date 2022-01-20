@@ -75,6 +75,10 @@ public class Configurations {
     private static int mapWidth = 10000, mapHeight = 10000;
     private static boolean useLocalUi = true;
 
+    private static long mineMaxResources = 1000;
+    private static long mineResourceAmount = 2;
+    private static long mineResourceReplenishAmount = 1; 
+
     private static final List<Image> shipImages = new ArrayList<>();
 
     private static InputStream getResource(String name) {
@@ -288,10 +292,23 @@ public class Configurations {
         return tickDelay;
     }
 
+    public static long getMineMaxResources() {
+        return mineMaxResources;
+    }
+
+    public static long getMineResourceAmount() {
+        return mineResourceAmount;
+    }
+
+    public static long getMineResourceReplenishAmount() {
+        return mineResourceReplenishAmount;
+    }
+
     public static String getConfigData() {
         return mapWidth + " " + mapHeight + " " + mineCount + " " + captureRadius + " " + speed + " " + friction + " "
                 + brakeFriction + " " + scanRadius + " " + scanDelay + " " + bombPlacementRadius + " "
-                + bombExplosionRadius + " " + bombPower + " " + bombDelay + " " + minBombDelay + " " + maxBombDelay;
+                + bombExplosionRadius + " " + bombPower + " " + bombDelay + " " + minBombDelay + " " + maxBombDelay + " "
+                + mineMaxResources + " " + mineResourceAmount + " " + mineResourceReplenishAmount;
     }
 
     public static boolean getUseLocalUI() {
@@ -393,6 +410,16 @@ public class Configurations {
                     break;
                 case "wormhole-count":
                     wormHoleCount = Integer.parseInt(st.nextToken());
+                    break;
+                case "mine-max-resources":
+                    mineMaxResources = Long.parseLong(st.nextToken());
+                    break;
+                case "mine-resource-amount":
+                    mineResourceAmount = Long.parseLong(st.nextToken());
+                    break;
+                case "mine-resource-replenish-amount":
+                    mineResourceReplenishAmount = Long.parseLong(st.nextToken());
+                    break;
                 case "use-local-ui":
                     switch (st.nextToken()) {
                     case "true":
@@ -448,6 +475,9 @@ public class Configurations {
         out.append(" BOMBDELAY ").append(bombDelay / ticksPerSec);
         out.append(" BOMBPOWER ").append(bombPower);
         out.append(" SCANRADIUS ").append(scanRadius);
+        out.append(" MINEMAXRESOURCES ").append(mineMaxResources);
+        out.append(" MINERESOURCEAMOUNT ").append(mineResourceAmount);
+        out.append(" MINERESOURCEREPLENISHAMOUNT ").append(mineResourceReplenishAmount);
         out.append(" SCANDELAY ").append(scanDelay / ticksPerSec).append(" ");
         return out.toString();
     }
