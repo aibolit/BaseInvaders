@@ -195,7 +195,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     }
 
     private void updatePlayerPosition(Player player, Point position) {
-        player.getPosition().setX(position.getX() % Configurations.getMapWidth()).setY(position.getY()  % Configurations.getMapHeight());
+        player.getPosition().setX((position.getX() + Configurations.getMapWidth()) % Configurations.getMapWidth()).setY((position.getY() + Configurations.getMapHeight()) % Configurations.getMapHeight());
     }
 
     private synchronized void nextRound() {

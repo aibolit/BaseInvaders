@@ -226,7 +226,7 @@ public class GameStatus extends javax.swing.JFrame {
                 cg.translate(player.getPosition().getX(), player.getPosition().getY());
                 cg.scale(Configurations.getMapWidth() / mapScale, Configurations.getMapHeight() / mapScale);
                 cg.rotate(Math.PI / 2 + Math.atan2(player.getVelocity().getY(), player.getVelocity().getX()));
-                cg.drawImage(Configurations.getPlayerImage(player.getPlayerId()), -6, -6, this);
+                cg.drawImage(Configurations.getPlayerImage(player.getPlayerId()), -12, -12, this);
                 cg.setTransform(tloc);
             });
 
