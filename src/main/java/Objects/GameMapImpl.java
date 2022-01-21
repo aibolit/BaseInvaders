@@ -90,8 +90,8 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         ticks = 0;
         mines.clear();
         for (int i = 0; i < Configurations.getMineCount(); i++) {
-            mines.add(new Mine(new Point(Math.random() * Configurations.getMapWidth(),
-                    Math.random() * Configurations.getMapHeight())));
+            final Point minePosition = new Point(Math.random() * Configurations.getMapWidth(), Math.random() * Configurations.getMapHeight());
+            mines.add(new Mine(minePosition, Configurations.getMineMaxResources(), Configurations.getMineMaxResources()));
         }
 
         stations.clear();
@@ -347,8 +347,12 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         final boolean captureAwardMineral = awardMineral;
         mines.stream().filter((mine) -> (mine.getOwner() != null)).forEach((mine) -> {
             if(captureAwardMineral) {
-                userMinerals.put(mine.getOwner().getName(), Math.min(userCapacity.get(mine.getOwner().getName()), 1 + userMinerals.get(mine.getOwner().getName())));
+                final long amountMined = mine.mineResources(Configurations.getMineResourceAmount());
+                userMinerals.put(mine.getOwner().getName(), Math.min(userCapacity.get(mine.getOwner().getName()), amountMined + userMinerals.get(mine.getOwner().getName())));
             }
+        });
+        mines.stream().forEach((mine) -> {
+            mine.replenishResources(Configurations.getMineResourceReplenishAmount());
         });
 
         Set<Bomb> removeBombs = new CopyOnWriteArraySet<>();
