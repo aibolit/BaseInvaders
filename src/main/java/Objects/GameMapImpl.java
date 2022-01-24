@@ -351,8 +351,6 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             if(captureAwardMineral) {
                 final long amountMined = mine.mineResources(Configurations.getMineResourceAmount());
                 userMinerals.put(mine.getOwner().getName(), Math.min(userCapacity.get(mine.getOwner().getName()), amountMined + userMinerals.get(mine.getOwner().getName())));
-
-                System.err.println(mine.getResources());
             }
         });
         mines.stream().forEach((mine) -> {
