@@ -47,6 +47,10 @@ public class Mine extends GameObject implements Serializable {
         return this.resources;
     }
 
+    public long getMaxResources() {
+        return this.maxResources;
+    }
+
     /**
      * Decrease resources by the given amount.  Returns effective amount of resources used.
      * @param usage amount of resources to be attempted to mine
@@ -63,7 +67,7 @@ public class Mine extends GameObject implements Serializable {
      * @param replenish amount to try to add
      */
     public void replenishResources(long replenish) {
-        this.resources = Math.max(this.maxResources, this.resources + replenish); 
+        this.resources = Math.min(this.maxResources, this.resources + replenish); 
     }
 
     @Override

@@ -297,21 +297,21 @@ public class BaseInvadersServer implements BIServer, Runnable {
         String cmd = st.nextToken();
         String out = null;
         switch (cmd) {
-            case "ACCELERATE": {
-                gameMap.setAcceleration(user, Double.parseDouble(st.nextToken()), Double.parseDouble(st.nextToken()));
-                out = "ACCELERATE_OUT DONE";
-            }
-            break;
+            // case "ACCELERATE": {
+            //     gameMap.setAcceleration(user, Double.parseDouble(st.nextToken()), Double.parseDouble(st.nextToken()));
+            //     out = "ACCELERATE_OUT DONE";
+            // }
+            // break;
             case "MOVE_TO": {
                 gameMap.setDestination(user, Double.parseDouble(st.nextToken()), Double.parseDouble(st.nextToken()));
                 out = "MOVE_TO DONE";
             }
             break;
-            case "TELEPORT": {
-                gameMap.teleport(user, Double.parseDouble(st.nextToken()), Double.parseDouble(st.nextToken()));
-                out = "TELEPORT DONE";
-            }
-            break;
+            // case "TELEPORT": {
+            //     gameMap.teleport(user, Double.parseDouble(st.nextToken()), Double.parseDouble(st.nextToken()));
+            //     out = "TELEPORT DONE";
+            // }
+            // break;
             case "SELL": {
                 boolean success = gameMap.sellMineral(user);
                 if(success) {
