@@ -339,7 +339,7 @@ public class BaseInvadersServer implements BIServer, Runnable {
                 gameMap.getMines().stream().filter(mine -> mine.distanceTo(p) < Configurations.getVisionRadius()).forEach(mine -> mines.add(mine));
                 sb.append(mines.size()).append(" ");
                 mines.stream().forEach((mine) -> {
-                    sb.append(mine.getOwner() != null ? mine.getOwner().getName() : "--").append(" ").append(mine.getPosition().getX()).append(" ").append(mine.getPosition().getY()).append(" ");
+                    sb.append(mine.getOwner() != null ? mine.getOwner().getName() : "--").append(" ").append(mine.getPosition().getX()).append(" ").append(mine.getPosition().getY()).append(" ").append(mine.getResources()).append(" ");
                 });
                 sb.append(" STATIONS ");
                 List<Station> stations = new LinkedList<>();

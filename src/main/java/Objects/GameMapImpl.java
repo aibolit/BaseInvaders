@@ -87,12 +87,16 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         return wormHoles;
     }
 
+    private void addRandomMine() {
+        final Point minePosition = new Point(Math.random() * Configurations.getMapWidth(), Math.random() * Configurations.getMapHeight());
+        mines.add(new Mine(minePosition, Configurations.getMineMaxResources(), Configurations.getMineMaxResources()));
+    }
+
     private synchronized void reset() {
         ticks = 0;
         mines.clear();
         for (int i = 0; i < Configurations.getMineCount(); i++) {
-            final Point minePosition = new Point(Math.random() * Configurations.getMapWidth(), Math.random() * Configurations.getMapHeight());
-            mines.add(new Mine(minePosition, Configurations.getMineMaxResources(), Configurations.getMineMaxResources()));
+            addRandomMine();
         }
 
         stations.clear();
@@ -349,14 +353,18 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         final boolean captureAwardMineral = awardMineral;
         mines.stream().filter((mine) -> (mine.getOwner() != null)).forEach((mine) -> {
             if(captureAwardMineral) {
-                final long amountMined = mine.mineResources(Configurations.getMineResourceAmount());
-                userMinerals.put(mine.getOwner().getName(), Math.min(userCapacity.get(mine.getOwner().getName()), amountMined + userMinerals.get(mine.getOwner().getName())));
+                final long amountMined = mine.mineResources(Configurations.getMineResourceAmount() - Configurations.getMineResourceReplenishAmount());
+
+                // if we used up all the resources, the mine dies
+                if (amountMined == 0l) {
+                    mine.setOwner(null);
+                    mines.remove(mine);
+                    addRandomMine();
+                } else {
+                    userMinerals.put(mine.getOwner().getName(), Math.min(userCapacity.get(mine.getOwner().getName()), amountMined + Configurations.getMineResourceReplenishAmount() + userMinerals.get(mine.getOwner().getName())));
+                }
             }
         });
-        mines.stream().forEach((mine) -> {
-            mine.replenishResources(Configurations.getMineResourceReplenishAmount());
-        });
-
 
         Set<Bomb> removeBombs = new CopyOnWriteArraySet<>();
         bombs.stream().forEach(bomb -> {
