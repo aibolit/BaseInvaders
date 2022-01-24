@@ -65,6 +65,7 @@ public class Configurations {
     private static double bombPower = 15;
     private static double scanRadius = 500;
     private static long scanDelay = 100;
+    private static long moveToDelay = 100;
 
     private static double minWormHoleRadius = 150, maxWormHoleRadius = 500;
     private static double wormHoleCenterRadius = 10;
@@ -78,6 +79,7 @@ public class Configurations {
     private static long mineMaxResources = 1000;
     private static long mineResourceAmount = 2;
     private static long mineResourceReplenishAmount = 1; 
+    private static float mineDisplayMinAlpha = 0.4f;
 
     private static final List<Image> shipImages = new ArrayList<>();
 
@@ -284,6 +286,10 @@ public class Configurations {
         return scanDelay;
     }
 
+    public static long getMoveToDelay() {
+        return moveToDelay;
+    }
+
     public static Long getDowntimeTicks() {
         return downtimeTicks;
     }
@@ -304,11 +310,15 @@ public class Configurations {
         return mineResourceReplenishAmount;
     }
 
+    public static float getMineDisplayMinAlpha() {
+        return mineDisplayMinAlpha;
+    }
+
     public static String getConfigData() {
         return mapWidth + " " + mapHeight + " " + mineCount + " " + captureRadius + " " + speed + " " + friction + " "
                 + brakeFriction + " " + scanRadius + " " + scanDelay + " " + bombPlacementRadius + " "
                 + bombExplosionRadius + " " + bombPower + " " + bombDelay + " " + minBombDelay + " " + maxBombDelay + " "
-                + mineMaxResources + " " + mineResourceAmount + " " + mineResourceReplenishAmount;
+                + mineMaxResources + " " + mineResourceAmount + " " + mineResourceReplenishAmount + " " + moveToDelay;
     }
 
     public static boolean getUseLocalUI() {
@@ -374,11 +384,38 @@ public class Configurations {
                 case "speed":
                     speed = Double.parseDouble(st.nextToken());
                     break;
+                case "fixedDelta":
+                    fixedDelta = Double.parseDouble(st.nextToken());
+                    break;
+                case "getTicksPerSec":
+                    ticksPerSec = Double.parseDouble(st.nextToken());
+                    break;
+                case "defaultAcceleration":
+                    defaultAcceleration = Double.parseDouble(st.nextToken());
+                    break;
+                case "maxSpeed":
+                    maxSpeed = Double.parseDouble(st.nextToken());
+                    break;
+                case "percentOfDestinationToSlowdown":
+                    percentOfDestinationToSlowdown = Double.parseDouble(st.nextToken());
+                    break;
+                case "arrivalDistance":
+                    arrivalDistance = Double.parseDouble(st.nextToken());
+                    break;
+                case "mineralPerSecondTime":
+                    mineralPerSecondTime = Double.parseDouble(st.nextToken());
+                    break;
+                case "mineralCapacity":
+                    mineralCapacity = Long.parseLong(st.nextToken());
+                    break;
                 case "capture-radius":
                     captureRadius = Double.parseDouble(st.nextToken());
                     break;
                 case "mines":
                     mineCount = Integer.parseInt(st.nextToken());
+                    break;
+                case "stations":
+                    stationCount = Integer.parseInt(st.nextToken());
                     break;
                 case "vision-radius":
                     visionRadius = Double.parseDouble(st.nextToken());
@@ -407,6 +444,9 @@ public class Configurations {
                     break;
                 case "scan-delay":
                     scanDelay = Long.parseLong(st.nextToken());
+                    break;
+                case "moveToDelay":
+                    moveToDelay = Long.parseLong(st.nextToken());
                     break;
                 case "wormhole-count":
                     wormHoleCount = Integer.parseInt(st.nextToken());
@@ -475,10 +515,11 @@ public class Configurations {
         out.append(" BOMBDELAY ").append(bombDelay / ticksPerSec);
         out.append(" BOMBPOWER ").append(bombPower);
         out.append(" SCANRADIUS ").append(scanRadius);
+        out.append(" SCANDELAY ").append(scanDelay / ticksPerSec);
         out.append(" MINEMAXRESOURCES ").append(mineMaxResources);
         out.append(" MINERESOURCEAMOUNT ").append(mineResourceAmount);
         out.append(" MINERESOURCEREPLENISHAMOUNT ").append(mineResourceReplenishAmount);
-        out.append(" SCANDELAY ").append(scanDelay / ticksPerSec).append(" ");
+        out.append(" MOVETODELAY ").append(moveToDelay / ticksPerSec).append(" ");
         return out.toString();
     }
 
