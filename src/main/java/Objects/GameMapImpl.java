@@ -36,6 +36,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
     private final Set<Bomb> bombs = new CopyOnWriteArraySet<>();
     private final Map<String, Set<Bomb>> userBombs = new ConcurrentHashMap<>();
     private final Map<String, Long> userLastScan = new ConcurrentHashMap<>();
+    private final Map<String, Long> userLastSetDestination = new ConcurrentHashMap<>();
     private final Set<WormHole> wormHoles = new CopyOnWriteArraySet<>();
     private long ticks = 0, downtimeTicks = 0;
     private double mineTimer = 0.;
@@ -159,6 +160,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         userDestinations.clear();
         userArrivingDeceleration.clear();
         userLastScan.clear();
+        userLastSetDestination.clear();
     }
 
     @Override
@@ -349,14 +351,17 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             if(captureAwardMineral) {
                 final long amountMined = mine.mineResources(Configurations.getMineResourceAmount());
                 userMinerals.put(mine.getOwner().getName(), Math.min(userCapacity.get(mine.getOwner().getName()), amountMined + userMinerals.get(mine.getOwner().getName())));
+
+                System.err.println(mine.getResources());
             }
         });
         mines.stream().forEach((mine) -> {
             mine.replenishResources(Configurations.getMineResourceReplenishAmount());
         });
 
+
         Set<Bomb> removeBombs = new CopyOnWriteArraySet<>();
-        bombs.stream().parallel().forEach(bomb -> {
+        bombs.stream().forEach(bomb -> {
             if (bomb.isExploded()) {
                 removeBombs.add(bomb);
                 players.values().stream()
@@ -377,6 +382,7 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
 
             bomb.nextRound();
         });
+
         removeBombs.stream().forEach(bomb -> {
             bombs.remove(bomb);
             userBombs.get(bomb.getPlayer().getName()).remove(bomb);
@@ -438,7 +444,13 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
         userArrivingDeceleration.remove(user);
         userDestinations.remove(user);
     }
-    public synchronized void setDestination(String user, double x, double y) {
+    public synchronized void setDestination(String user, double x, double y)  throws BaseInvadersException {
+
+        if (userLastSetDestination.containsKey(user) && userLastSetDestination.get(user) + Configurations.getMoveToDelay() > ticks) {
+            throw new BaseInvadersException("Moving too soon");
+        }
+        userLastSetDestination.put(user, ticks);
+
         Point dest = new Point(x  % Configurations.getMapWidth(), y  % Configurations.getMapHeight());
 
         wipeExistingDestination(user);
@@ -529,6 +541,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
             userMines.get(mine.getOwner().getName()).add(mine);
         });
         return userMines;
+    }
+
+    @Override
+    public synchronized long getUserMineCount(String user) {
+        return mines.stream().filter((mine) -> !(mine.getOwner() == null) && mine.getOwner().getName() == user).count();
     }
 
     @Override
@@ -673,6 +690,11 @@ public class GameMapImpl implements Runnable, Serializable, GameMap {
                 userMines.get(mine.getOwner().getName()).add(mine);
             });
             return userMines;
+        }
+
+        @Override
+        public long getUserMineCount(String user) {
+            return mines.stream().filter((mine) -> !(mine.getOwner() == null) && mine.getOwner().getName() == user).count();
         }
 
         @Override

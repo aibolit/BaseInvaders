@@ -29,6 +29,8 @@ public interface GameMap {
 
     public Map<String, Set<Mine>> getUserMines();
 
+    public long getUserMineCount(String user);
+
     public Player getPlayer(String user);
 
     public long getPlayerScore(String user);

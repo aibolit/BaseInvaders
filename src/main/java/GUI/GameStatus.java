@@ -22,7 +22,9 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
+import java.awt.AlphaComposite;
+import java.util.HashSet;
+import java.util.Set;
 /**
  *
  * @author Sasa
@@ -82,11 +84,13 @@ public class GameStatus extends javax.swing.JFrame {
             private final String user;
             private final long score;
             private final long minerals;
+            private final long mineCount;
 
-            UserScore(String user, long score, long minerals) {
+            UserScore(String user, long score, long minerals, long mineCount) {
                 this.user = user;
                 this.score = score;
                 this.minerals = minerals;
+                this.mineCount = mineCount;
             }
 
             public String getUser() {
@@ -101,6 +105,10 @@ public class GameStatus extends javax.swing.JFrame {
                 return minerals;
             }
 
+            public long getMineCount() {
+                return mineCount;
+            }
+
             @Override
             public int compareTo(UserScore t) {
                 double rv = t.getScore() - this.getScore();
@@ -109,13 +117,13 @@ public class GameStatus extends javax.swing.JFrame {
 
             @Override
             public String toString() {
-                return user + " " + score + " " + minerals;
+                return user + " " + score + " " + minerals + " " + mineCount;
             }
         }
 
         List<UserScore> scores = new ArrayList<>();
         baseInvadersServer.getGameMap().getPlayers().stream().forEach((player) -> {
-            scores.add(new UserScore(player.getName(), baseInvadersServer.getGameMap().getUserScore(player.getName()), baseInvadersServer.getGameMap().getUserMinerals(player.getName())));
+            scores.add(new UserScore(player.getName(), baseInvadersServer.getGameMap().getUserScore(player.getName()), baseInvadersServer.getGameMap().getUserMinerals(player.getName()), baseInvadersServer.getGameMap().getUserMineCount(player.getName())));
         });
         Collections.sort(scores);
 
@@ -182,8 +190,9 @@ public class GameStatus extends javax.swing.JFrame {
         cg.setColor(Color.WHITE);
         cg.setFont(new Font("Arial", Font.BOLD, 32));
         cg.drawString("Player", 24, 230);
-        cg.drawString("Score", 260, 230);
-        cg.drawString("Minerals", 380, 230);
+        cg.drawString("Own", 200, 230);
+        cg.drawString("Mins", 320, 230);
+        cg.drawString("Score", 420, 230);
 
         cg.setColor(AMBER);
         DecimalFormat scoreFormat = new DecimalFormat("");
@@ -196,8 +205,9 @@ public class GameStatus extends javax.swing.JFrame {
             cg.setFont(playerFont);
             cg.drawString(scores.get(i).getUser(), 50, 270 + 40 * i);
             cg.setFont(scoreFont);
-            cg.drawString(String.format("%19s", scores.get(i).getScore()), -70, 270 + 40 * i);
-            cg.drawString(String.format("%19s", scores.get(i).getMinerals()), 90, 270 + 40 * i);
+            cg.drawString(String.format("%19s", scores.get(i).getMineCount()), -150, 270 + 40 * i);
+            cg.drawString(String.format("%19s", scores.get(i).getMinerals()), -30, 270 + 40 * i);
+            cg.drawString(String.format("%19s", scores.get(i).getScore()), 90, 270 + 40 * i);
         }
 
         cg.setTransform(root);
@@ -233,14 +243,23 @@ public class GameStatus extends javax.swing.JFrame {
             cg.setColor(Color.WHITE);
 
             baseInvadersServer.getGameMap().getMines().stream().forEach((mine) -> {
+
+                final float percentLeft = (float)mine.getResources() /  (float)Math.max(1, mine.getMaxResources());
+                final float alpha = (1.0f - Configurations.getMineDisplayMinAlpha()) * percentLeft + Configurations.getMineDisplayMinAlpha();
+                cg.setColor(new Color(1.0f, 1.0f, 1.0f, alpha));
+
                 AffineTransform tloc = cg.getTransform();
                 cg.translate(mine.getPosition().getX(), mine.getPosition().getY());
                 cg.scale(Configurations.getMapWidth() / mapScale, Configurations.getMapHeight() / mapScale);
                 if (mine.getOwner() != null) {
+                    cg.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
                     cg.drawImage(Configurations.getPlayerImage(mine.getOwner().getPlayerId()), -10, -10, 20, 20, null);
                 }
                 cg.drawOval(-5, -5, 10, 10);
                 cg.setTransform(tloc);
+
+                // Reset alpha for next pass
+                cg.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
             });
 
             cg.setColor(Color.GREEN);
